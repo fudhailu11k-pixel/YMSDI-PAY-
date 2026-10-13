@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YMSDI Pay Admin</title>
+<meta name="robots" content="noindex">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{--g:#065f33;--gd:#0a2418;--bg:#f4f6f3;--card:#fff;--ink:#10231a;--mute:#5b6b62;--line:#dfe6e0;--err:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1712;--card:#16231b;--ink:#e8f1ea;--mute:#9bb0a2;--line:#27382d}}
+*{box-sizing:border-box}body{margin:0;font-family:Roboto,system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+header{background:var(--gd);color:#fff;padding:14px 16px;font-weight:700}
+main{max-width:760px;margin:0 auto;padding:16px}
+nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+nav button{padding:9px 14px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;font:inherit;cursor:pointer}
+nav button[aria-selected=true]{background:var(--g);color:#fff;border-color:var(--g)}
+section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.row{padding:12px 0;border-bottom:1px solid var(--line)}.row:last-child{border:0}
+.row b{display:block}.row small{color:var(--mute);display:block;margin-bottom:6px}
+.line{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input,select{flex:1;min-width:140px;padding:10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:var(--bg);color:var(--ink)}
+button.b{padding:10px 14px;border:0;border-radius:8px;background:var(--g);color:#fff;font:inherit;font-weight:700;cursor:pointer}
+button.b.red{background:var(--err)}button.b.grey{background:var(--mute)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #4aa36f;outline-offset:2px}
+#toast{position:fixed;left:12px;right:12px;bottom:12px;max-width:560px;margin:auto;padding:12px;border-radius:10px;background:var(--gd);color:#fff;display:none}
+#toast.err{background:var(--err)}
+.pill{font-size:.8rem;padding:2px 8px;border-radius:99px;background:var(--line)}
+</style>
+</head>
+<body>
+<header>YMSDI Pay Admin</header>
+<main>
+  <div id="gate">Checking access...</div>
+  <div id="panel" hidden>
+    <nav id="tabs" role="tablist"></nav>
+    <section id="view"></section>
+  </div>
+</main>
+<div id="toast" role="status"></div>
+<script>
+const SUPABASE_URL = "https://svzyycobhthrnrljxghp.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN2enl5Y29iaHRocm5ybGp4Z2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4ODAxMzgsImV4cCI6MjEwNzQ1NjEzOH0.5WoKPsE62OqXkg71cIvXoVnr3CGtDeMNtMS2eq0brmU";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const $ = id => document.getElementById(id);
+const fmt = n => Number(n).toLocaleString("en-US", {maximumFractionDigits: 2});
+
+function el(tag, text, cls){ const e = document.createElement(tag); if (text != null) e.textContent = text; if (cls) e.className = cls; return e; }
+function toast(t, err){ const x = $("toast"); x.textContent = t; x.className = err ? "err" : ""; x.style.display = "block"; setTimeout(() => x.style.display = "none", 4500); }
+async function run(promise, okMsg){ const { error } = await promise; if (error){ toast(error.message, true); return false; } toast(okMsg || "Saved"); return true; }
+function btn(text, fn, cls){ const b = el("button", text, "b " + (cls || "")); b.onclick = fn; return b; }
+function row(title, help){ const r = el("div", null, "row"); r.appendChild(el("b", title)); if (help) r.appendChild(el("small", help)); return r; }
+
+const TABS = { settings: "Settings", features: "Features and rate", partner: "Partner keys", cashouts: "Cash outs", kyc: "ID checks", wallet: "Wallet payments", fees: "Fees", revenue: "Revenue" };
+let current = "settings";
+
+async function boot(){
+  const { data: { session } } = await db.auth.getSession();
+  if (!session){ $("gate").textContent = "Sign in on the portal first, then reopen this page."; return; }
+  const { data: ok } = await db.rpc("is_admin");
+  if (!ok){ $("gate").textContent = "This account is not an admin."; return; }
+  $("gate").hidden = true; $("panel").hidden = false;
+  Object.entries(TABS).forEach(([k, label]) => { const b = el("button", label); b.setAttribute("role", "tab"); b.dataset.k = k; b.onclick = () => go(k); $("tabs").appendChild(b); });
+  go("settings");
+}
+function go(k){ current = k; document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.k === k)); ({settings, features, partner, cashouts, kyc, wallet: walletpays, fees: feesTab, revenue: revenueTab})[k](); }
+function view(){ const v = $("view"); v.textContent = ""; return v; }
+
+async function settings(){
+  const v = view(); const { data } = await db.from("app_settings").select("*").order("key");
+  (data || []).forEach(s => {
+    const r = row(s.label || s.key, s.help); const line = el("div", null, "line"); let inp;
+    if (s.key === "payments_mode" || ["true","false"].includes(s.value)){
+      inp = el("select"); (s.key === "payments_mode" ? ["demo","live"] : ["true","false"]).forEach(o => inp.add(new Option(o, o))); inp.value = s.value;
+    } else { inp = el("input"); inp.value = s.value; }
+    line.append(inp, btn("Save", async () => { if (await run(db.rpc("admin_set_setting", {p_key: s.key, p_value: inp.value}))) settings(); }));
+    r.appendChild(line); v.appendChild(r);
+  });
+}
+
+async function features(){
+  const v = view();
+  const { data: rt } = await db.from("rates").select("ugx_per_usdt").eq("pair","USDT_UGX").single();
+  const rr = row("USDT to UGX rate", "Used for every quote. Update it often, or ask your partner for a live feed."); const rl = el("div", null, "line");
+  const ri = el("input"); ri.type = "number"; ri.value = rt ? rt.ugx_per_usdt : 3650;
+  rl.append(ri, btn("Save rate", () => run(db.rpc("admin_set_rate", {p_rate: Number(ri.value)})))); rr.appendChild(rl); v.appendChild(rr);
+  const { data } = await db.from("feature_flags").select("*").order("phase").order("label");
+  (data || []).forEach(f => {
+    const r = row(f.label, "Phase " + f.phase); const line = el("div", null, "line");
+    const sel = el("select"); sel.add(new Option("On", "true")); sel.add(new Option("Off", "false")); sel.value = String(f.enabled);
+    line.append(sel, btn("Save", () => run(db.rpc("admin_set_flag", {p_key: f.key, p_enabled: sel.value === "true"})))); r.appendChild(line); v.appendChild(r);
+  });
+}
+
+async function partner(){
+  const v = view();
+  v.appendChild(el("p", "Enter the keys your payment partner gives you. They are stored privately and never shown again, only whether each one is set. Also give the partner this webhook address: " + SUPABASE_URL + "/functions/v1/pay-api/webhook"));
+  const { data } = await db.rpc("admin_secret_status");
+  const names = { partner_api_base: "Partner API address (https://...)", partner_api_key: "Partner API key", partner_webhook_secret: "Partner webhook signing secret" };
+  (data || []).forEach(s => {
+    const r = row(names[s.key], s.is_set ? "Currently set" : "Not set yet"); const line = el("div", null, "line");
+    const i = el("input"); i.type = s.key === "partner_api_base" ? "text" : "password"; i.autocomplete = "off"; i.placeholder = "Paste new value";
+    line.append(i, btn("Save", async () => { if (i.value && await run(db.rpc("admin_set_secret", {p_key: s.key, p_value: i.value}))) partner(); })); r.appendChild(line); v.appendChild(r);
+  });
+}
+
+async function cashouts(){
+  const v = view();
+  const bar = el("div", null, "line");
+  bar.appendChild(btn("Send approved payouts now", async () => {
+    const { data: { session } } = await db.auth.getSession();
+    const res = await fetch(SUPABASE_URL + "/functions/v1/pay-api/payouts", { method: "POST", headers: { Authorization: "Bearer " + session.access_token } });
+    const j = await res.json(); if (!res.ok){ toast(j.error || "Failed", true); return; }
+    toast(`Sent ${j.sent}. ` + (j.errors && j.errors.length ? j.errors.join(" | ") : "No errors.")); cashouts();
+  }));
+  v.appendChild(bar);
+  const { data } = await db.from("cashouts").select("*").in("status", ["pending_review","approved","sending","sent","failed"]).order("id", {ascending: false}).limit(50);
+  if (!data || !data.length) v.appendChild(el("p", "No cash outs waiting."));
+  (data || []).forEach(c => {
+    const r = row(`CO-${c.id}: UGX ${fmt(c.ugx_amount)} to ${c.network.toUpperCase()} ${c.msisdn}`, `${c.status}${c.note ? " | " + c.note : ""} | ${new Date(c.created_at).toLocaleString()}`);
+    if (c.status === "pending_review"){
+      const line = el("div", null, "line");
+      line.append(btn("Approve", async () => { if (await run(db.rpc("admin_review_cashout", {p_id: c.id, p_approve: true, p_note: null}))) cashouts(); }),
+                  btn("Reject and refund", async () => { const n = prompt("Reason (shown to the user):") || "Rejected"; if (await run(db.rpc("admin_review_cashout", {p_id: c.id, p_approve: false, p_note: n}))) cashouts(); }, "red"));
+      r.appendChild(line);
+    }
+    if (c.status === "sending") r.appendChild(el("small", "If this stays on 'sending', check the partner dashboard before doing anything. Never send it twice."));
+    v.appendChild(r);
+  });
+}
+
+async function kyc(){
+  const v = view();
+  const { data } = await db.from("kyc").select("*").eq("status", "pending").order("submitted_at");
+  if (!data || !data.length) v.appendChild(el("p", "No ID checks waiting."));
+  (data || []).forEach(k => {
+    const r = row(k.full_name + " | ID " + k.id_number, new Date(k.submitted_at).toLocaleString()); const line = el("div", null, "line");
+    line.append(btn("View document", async () => { const { data: u, error } = await db.storage.from("kyc").createSignedUrl(k.doc_path, 120); if (error) toast(error.message, true); else window.open(u.signedUrl, "_blank", "noopener"); }, "grey"),
+      btn("Approve", async () => { if (await run(db.rpc("admin_review_kyc", {p_user: k.user_id, p_approve: true, p_note: null}))) kyc(); }),
+      btn("Reject", async () => { const n = prompt("Reason:") || "Rejected"; if (await run(db.rpc("admin_review_kyc", {p_user: k.user_id, p_approve: false, p_note: n}))) kyc(); }, "red"));
+    r.appendChild(line); v.appendChild(r);
+  });
+}
+async function walletpays(){
+  const v = view();
+  v.appendChild(el("p", "Wallet payments that need a decision. Refunds are sent by you from your wallet or partner dashboard (crypto payments cannot be reversed automatically). Then press Mark refunded."));
+  const { data } = await db.from("orders").select("*").in("status", ["needs_review","refund_due"]).eq("pay_method","wallet").order("id", {ascending:false});
+  if (!data || !data.length) v.appendChild(el("p", "Nothing needs attention."));
+  for (const o of (data || [])){
+    const { data: wp } = await db.from("wallet_payments").select("*").eq("order_id", o.id);
+    const r = row(`ORD-${o.id}: UGX ${fmt(o.ugx_amount)} | expected ${o.pay_total} USDT on ${o.chain}`, o.status.replace("_", " "));
+    (wp || []).forEach(p => r.appendChild(el("small", `Received ${p.amount_usdt} USDT from ${p.payer} | tx ${p.tx_hash} | ${p.note || ""}`)));
+    const line = el("div", null, "line");
+    if (o.status === "needs_review") line.appendChild(btn("Approve and process", async () => { if (await run(db.rpc("admin_resolve_wallet_order", {p_order: o.id, p_action: "approve", p_note: "Approved by admin"}))) walletpays(); }));
+    line.appendChild(btn("Mark refunded", async () => { const n = prompt("Refund transaction hash or note:") || ""; if (await run(db.rpc("admin_resolve_wallet_order", {p_order: o.id, p_action: "refunded", p_note: n}))) walletpays(); }, "red"));
+    r.appendChild(line); v.appendChild(r);
+  }
+}
+const num = v => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+async function feesTab(){
+  const v = view();
+  v.appendChild(el("p", "Set what customers pay (percent, minimum, flat) and what YOUR partner charges you (cost estimates, used for profit reports). The customer fee is: the larger of (percent of amount + flat) and the minimum. Rates change with each partner, so edit these when you sign agreements. Changes apply to new transactions only."));
+  const { data: sp } = await db.from("app_settings").select("value").eq("key","spread_percent").single();
+  const sr = row("Exchange spread (%)", "Customers get the base USDT rate minus this %. The difference is your margin. Keep 0 if your partner already adds a margin, and always show customers the rate."); const sl = el("div", null, "line");
+  const si = el("input"); si.type = "number"; si.step = "0.1"; si.value = sp ? sp.value : "0";
+  sl.append(si, btn("Save", () => run(db.rpc("admin_set_setting", {p_key: "spread_percent", p_value: String(num(si.value))})))); sr.appendChild(sl); v.appendChild(sr);
+
+  const pr = row("Preview a payment of (UGX)"); const pi = el("input"); pi.type = "number"; pi.value = 20000; pr.appendChild(pi); const pout = el("small", ""); pr.appendChild(pout); v.appendChild(pr);
+  const { data } = await db.from("fee_rules").select("*").order("key");
+  const rules = (data || []).map(r => ({ r, inputs: {} }));
+  const field = (r, box, key, label, step) => { const w = el("div"); w.appendChild(el("small", label)); const i = el("input"); i.type = "number"; i.step = step || "any"; i.min = "0"; i.value = r[key]; box.inputs[key] = i; i.oninput = preview; w.appendChild(i); return w; };
+  function preview(){
+    const a = num(pi.value); pout.textContent = rules.filter(x => x.inputs.percent).map(x => {
+      const fee = Math.max(Math.round(a * num(x.inputs.percent.value) / 100 + num(x.inputs.flat_ugx.value)), num(x.inputs.min_ugx.value));
+      const cost = Math.round(a * num(x.inputs.partner_percent.value) / 100 + num(x.inputs.partner_flat_ugx.value));
+      return `${x.r.label}: fee UGX ${fmt(fee)}, est. cost UGX ${fmt(cost)}, est. profit UGX ${fmt(fee - cost)}`; }).join("  |  ");
+  }
+  rules.forEach(x => {
+    const r = x.r, rw = row(r.label + (r.key === "*" || r.key === "cashout" ? "" : " (" + r.key + ")"));
+    const g = el("div", null, "line");
+    g.append(field(r, x, "percent", "Customer fee %", "0.1"), field(r, x, "min_ugx", "Minimum fee (UGX)"), field(r, x, "flat_ugx", "Flat fee (UGX)"));
+    const g2 = el("div", null, "line");
+    g2.append(field(r, x, "partner_percent", "Your partner cost %", "0.1"), field(r, x, "partner_flat_ugx", "Your partner flat cost (UGX)"));
+    const act = el("select"); act.add(new Option("Active", "true")); act.add(new Option("Off", "false")); act.value = String(r.active);
+    g2.append(act, btn("Save", async () => { const i = x.inputs; await run(db.rpc("admin_save_fee_rule", { p_key: r.key, p_label: r.label, p_percent: num(i.percent.value), p_min: num(i.min_ugx.value), p_flat: num(i.flat_ugx.value), p_pp: num(i.partner_percent.value), p_pf: num(i.partner_flat_ugx.value), p_active: act.value === "true" })); }));
+    rw.append(g, g2); v.appendChild(rw);
+  });
+  const { data: fl } = await db.from("feature_flags").select("key,label").order("label");
+  const add = row("Add a rule for another category", "For example a different fee for a specific biller or for vehicles later."); const al = el("div", null, "line");
+  const sel = el("select"); (fl || []).forEach(f => sel.add(new Option(f.label + " (" + f.key + ")", f.key)));
+  al.append(sel, btn("Create rule", async () => { if (await run(db.rpc("admin_save_fee_rule", { p_key: sel.value, p_label: sel.options[sel.selectedIndex].text, p_percent: 1, p_min: 500, p_flat: 0, p_pp: 0, p_pf: 0, p_active: true }))) feesTab(); }));
+  add.appendChild(al); v.appendChild(add); pi.oninput = preview; preview();
+}
+
+async function revenueTab(){
+  const v = view(); const line = el("div", null, "line");
+  const sel = el("select"); [["1","Today"],["7","Last 7 days"],["30","Last 30 days"],["3650","All time"]].forEach(([d, t]) => sel.add(new Option(t, d))); sel.value = "30";
+  line.append(sel, btn("Show", load)); v.appendChild(line);
+  const out = el("div"); v.appendChild(out);
+  async function load(){
+    const from = new Date(); from.setHours(0,0,0,0); from.setDate(from.getDate() - (Number(sel.value) - 1));
+    const { data, error } = await db.from("revenue_ledger").select("*").gte("created_at", from.toISOString()).order("created_at", {ascending: false}).limit(5000);
+    out.textContent = ""; if (error){ toast(error.message, true); return; }
+    if (!data.length){ out.appendChild(el("p", "No completed live transactions in this period yet.")); return; }
+    const tot = a => data.reduce((s, r) => s + Number(r[a]), 0);
+    const sum = row("Totals (UGX)", `${data.length} completed transactions, UGX ${fmt(tot("ugx_amount"))} processed`);
+    sum.appendChild(el("div", `Fees ${fmt(tot("fee_ugx"))}  +  Spread ${fmt(tot("spread_ugx"))}  -  Partner costs ${fmt(tot("partner_cost_ugx"))}  =  Net ${fmt(tot("net_ugx"))}`));
+    out.appendChild(sum);
+    const by = {}; data.forEach(r => { const k = r.category || "other"; (by[k] = by[k] || {n:0, fee:0, spread:0, cost:0, net:0}); const b = by[k]; b.n++; b.fee += Number(r.fee_ugx); b.spread += Number(r.spread_ugx); b.cost += Number(r.partner_cost_ugx); b.net += Number(r.net_ugx); });
+    Object.entries(by).sort((a, b) => b[1].net - a[1].net).forEach(([k, b]) => out.appendChild(row(k + " (" + b.n + ")", `Fees ${fmt(b.fee)} | Spread ${fmt(b.spread)} | Costs ${fmt(b.cost)} | Net ${fmt(b.net)}`)));
+    out.appendChild(btn("Download CSV for your accountant", () => {
+      const cols = ["created_at","source","ref_id","category","chain","ugx_amount","fee_ugx","spread_ugx","partner_cost_ugx","net_ugx"];
+      const csv = [cols.join(",")].concat(data.map(r => cols.map(c => JSON.stringify(r[c] == null ? "" : r[c])).join(","))).join("\n");
+      const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], {type: "text/csv"})); a.download = "ymsdi-revenue.csv"; a.click();
+    }, "grey"));
+  }
+  load();
+}
+boot();
+</script>
+</body>
+</html>
