@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>My shop | YMSDI Pay</title>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#065f33">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<style>
+:root{--g:#065f33;--bg:#f4f6f3;--card:#fff;--ink:#10231a;--mute:#5b6b62;--line:#dfe6e0;--warn:#fff4d6;--err:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1712;--card:#16231b;--ink:#e8f1ea;--mute:#9bb0a2;--line:#27382d;--warn:#3a3217}}
+*{box-sizing:border-box}body{margin:0;font-family:Roboto,system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+header{background:var(--g);color:#fff;padding:14px 16px;font-weight:700}header a{color:#fff;text-decoration:none}
+main{max-width:560px;margin:0 auto;padding:16px 16px 110px}section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+label{display:block;font-size:.9rem;color:var(--mute);margin:10px 0 4px}input,select,textarea{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:var(--bg);color:var(--ink)}
+.btn{margin-top:14px;width:100%;padding:13px;border:0;border-radius:10px;background:var(--g);color:#fff;font:inherit;font-weight:700;cursor:pointer}.btn.grey{background:var(--mute)}
+.msg{margin-top:10px;font-weight:500}.err{color:var(--err)}.pill{display:inline-block;padding:2px 10px;border-radius:99px;background:var(--warn);font-size:.85rem}
+.qr{text-align:center;background:#fff;color:#000;border-radius:12px;padding:12px}.qr svg{max-width:260px;width:100%;height:auto}
+ul{list-style:none;margin:0;padding:0}li{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}li:last-child{border:0}li span{color:var(--mute);font-size:.85rem;display:block}
+@media print{header,.noprint{display:none!important}body{background:#fff}section{border:0}}
+</style></head><body>
+<header><a href="pay.html">YMSDI Pay</a> | My shop</header>
+<main>
+<section id="gate" hidden><p>Please sign in first, then come back to this page.</p><a class="btn" style="display:block;text-align:center;text-decoration:none" href="pay.html">Go to sign in</a></section>
+<section id="reg" hidden>
+  <h2 style="margin-top:0">Register your shop</h2>
+  <p class="pill">Accept YMSDI Pay payments. We check every shop before it goes live.</p>
+  <label for="n">Shop name</label><input id="n" maxlength="60">
+  <label for="c">Type of business</label><select id="c"><option>Groceries</option><option>Restaurant</option><option>Pharmacy</option><option>School</option><option>Transport</option><option>Retail</option><option>Services</option><option>Other</option></select>
+  <label for="d">District or town</label><input id="d" maxlength="60">
+  <label for="ds">Short description (optional)</label><textarea id="ds" rows="2" maxlength="200"></textarea>
+  <label for="nw">Where should we pay you (UGX)?</label><select id="nw"><option value="mtn">MTN MoMo</option><option value="airtel">Airtel Money</option></select>
+  <label for="ph">Mobile money number</label><input id="ph" inputmode="tel" placeholder="07XXXXXXXX">
+  <button class="btn" id="go">Register shop</button><div class="msg err" id="rmsg" role="alert"></div>
+</section>
+<div id="shop" hidden>
+  <section><h2 style="margin-top:0" id="sn"></h2><p><span class="pill" id="st"></span></p><p id="si" style="color:var(--mute)"></p></section>
+  <section id="qrbox" hidden><div class="qr"><div id="qr"></div><p style="margin:6px 0 0"><b id="qn"></b><br>Shop code: <b id="qc"></b><br>Scan to pay with YMSDI Pay</p></div>
+    <p class="noprint" id="ql" style="word-break:break-all;color:var(--mute);font-size:.85rem"></p>
+    <button class="btn noprint" onclick="window.print()">Print QR code</button></section>
+  <section class="noprint"><h3 style="margin-top:0">Sales</h3><p id="tot" style="color:var(--mute)"></p><ul id="sales"></ul></section>
+</div>
+</main>
+<script>
+const SUPABASE_URL = "https://svzyycobhthrnrljxghp.supabase.co", SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN2enl5Y29iaHRocm5ybGp4Z2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4ODAxMzgsImV4cCI6MjEwNzQ1NjEzOH0.5WoKPsE62OqXkg71cIvXoVnr3CGtDeMNtMS2eq0brmU";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY), $ = id => document.getElementById(id), fmt = n => Number(n).toLocaleString("en-US", {maximumFractionDigits: 2});
+const STATUS = { pending: "Waiting for approval", approved: "Approved and verified", suspended: "Suspended. Contact support.", rejected: "Not approved. Contact support." };
+async function boot(){
+  const { data: { session } } = await db.auth.getSession();
+  if (!session){ $("gate").hidden = false; return; }
+  const { data: shop } = await db.from("merchants").select("*").eq("owner_id", session.user.id).maybeSingle();
+  if (!shop){ $("reg").hidden = false; return; }
+  $("reg").hidden = true; $("shop").hidden = false;
+  $("sn").textContent = shop.name; $("st").textContent = STATUS[shop.status] || shop.status;
+  $("si").textContent = [shop.category, shop.district].filter(Boolean).join(" | ") + " | Payouts to " + shop.payout_network.toUpperCase() + " " + shop.payout_msisdn;
+  if (shop.status === "approved"){
+    const link = location.origin + "/pay.html?shop=" + shop.code;
+    $("qrbox").hidden = false; $("qn").textContent = shop.name; $("qc").textContent = shop.code; $("ql").textContent = link;
+    try { const q = qrcode(0, "M"); q.addData(link); q.make(); $("qr").innerHTML = q.createSvgTag({ cellSize: 6, margin: 2, scalable: true }); } catch (e){ $("qr").textContent = "Could not draw the QR code. Share the link below instead."; }
+  }
+  const { data: rows } = await db.rpc("my_shop_sales", { p_limit: 50 });
+  const ok = (rows || []).filter(r => !["failed","refund_due","refunded"].includes(r.status));
+  $("tot").textContent = ok.length ? `${ok.length} payments, UGX ${fmt(ok.reduce((a, r) => a + Number(r.ugx_amount), 0))} in total (includes demo payments).` : "No payments yet.";
+  const ul = $("sales"); ul.textContent = "";
+  (rows || []).forEach(r => { const li = document.createElement("li"), d = document.createElement("div"); d.textContent = `ORD-${r.order_id}: UGX ${fmt(r.ugx_amount)}`;
+    const s = document.createElement("span"); s.textContent = `${r.status.replace(/_/g, " ")}${r.mode === "demo" ? " (demo)" : ""} | ${new Date(r.created_at).toLocaleString()}`; d.appendChild(s); li.appendChild(d); ul.appendChild(li); });
+}
+$("go").addEventListener("click", async () => {
+  const b = $("go"); b.disabled = true; $("rmsg").textContent = "";
+  const { error } = await db.rpc("register_merchant", { p_name: $("n").value, p_category: $("c").value, p_desc: $("ds").value, p_district: $("d").value, p_network: $("nw").value, p_msisdn: $("ph").value });
+  b.disabled = false; if (error){ $("rmsg").textContent = error.message; return; } boot();
+});
+boot();
+</script></body></html>

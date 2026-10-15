@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Savings groups | YMSDI Pay</title>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#065f33">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{--g:#065f33;--bg:#f4f6f3;--card:#fff;--ink:#10231a;--mute:#5b6b62;--line:#dfe6e0;--warn:#fff4d6;--err:#b3261e}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1712;--card:#16231b;--ink:#e8f1ea;--mute:#9bb0a2;--line:#27382d;--warn:#3a3217}}
+*{box-sizing:border-box}body{margin:0;font-family:Roboto,system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.5}
+header{background:var(--g);color:#fff;padding:14px 16px;font-weight:700}header a{color:#fff;text-decoration:none}
+main{max-width:600px;margin:0 auto;padding:16px 16px 110px}section{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+label{display:block;font-size:.9rem;color:var(--mute);margin:10px 0 4px}input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:var(--bg);color:var(--ink)}
+.btn{margin-top:12px;width:100%;padding:12px;border:0;border-radius:10px;background:var(--g);color:#fff;font:inherit;font-weight:700;cursor:pointer}.btn.grey{background:var(--mute)}.btn.red{background:var(--err)}.btn.sm{width:auto;padding:6px 12px;margin:0 6px 0 0}
+.msg{margin-top:10px;font-weight:500}.err{color:var(--err)}.pill{background:var(--warn);border-radius:10px;padding:10px 12px;font-size:.9rem;margin-bottom:12px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.stat{border:1px solid var(--line);border-radius:12px;padding:10px}.stat small{color:var(--mute);display:block}
+ul{list-style:none;margin:0;padding:0}li{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}li:last-child{border:0}li span{color:var(--mute);font-size:.85rem;display:block}
+</style></head><body>
+<header><a href="pay.html">YMSDI Pay</a> | Savings groups</header>
+<main>
+<div class="pill">A group record book for your chama, SACCO or village savings group. YMSDI Pay does not hold or move your group's money. Members record what they paid by cash or mobile money, and the group admin confirms it.</div>
+<section id="gate" hidden><p>Please sign in first, then come back to this page.</p><a class="btn" style="display:block;text-align:center;text-decoration:none" href="pay.html">Go to sign in</a></section>
+<div id="list" hidden>
+  <section><h3 style="margin-top:0">My groups</h3><ul id="groups"></ul></section>
+  <section><h3 style="margin-top:0">Create a group</h3>
+    <label for="gn">Group name</label><input id="gn" maxlength="60"><label for="gd">Description (optional)</label><input id="gd" maxlength="120">
+    <label for="ga">Usual contribution (UGX, optional)</label><input id="ga" type="number" min="0" inputmode="numeric">
+    <label for="gf">How often</label><select id="gf"><option value="monthly">Monthly</option><option value="weekly">Weekly</option><option value="flexible">Flexible</option></select>
+    <label for="gy">Your name in the group</label><input id="gy" maxlength="40"><button class="btn" id="mk">Create group</button></section>
+  <section><h3 style="margin-top:0">Join a group</h3><label for="jc">Group code</label><input id="jc" maxlength="8" autocapitalize="characters">
+    <label for="jy">Your name in the group</label><input id="jy" maxlength="40"><button class="btn grey" id="jn">Join group</button></section>
+  <div class="msg err" id="msg" role="alert"></div>
+</div>
+<div id="detail" hidden></div>
+</main>
+<script>
+const SUPABASE_URL = "https://svzyycobhthrnrljxghp.supabase.co", SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN2enl5Y29iaHRocm5ybGp4Z2hwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4ODAxMzgsImV4cCI6MjEwNzQ1NjEzOH0.5WoKPsE62OqXkg71cIvXoVnr3CGtDeMNtMS2eq0brmU";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY), $ = id => document.getElementById(id), fmt = n => Number(n).toLocaleString("en-US", {maximumFractionDigits: 2});
+function el(t, x, c){ const e = document.createElement(t); if (x != null) e.textContent = x; if (c) e.className = c; return e; }
+let me, groups = [];
+async function boot(){
+  const { data: { session } } = await db.auth.getSession(); if (!session){ $("gate").hidden = false; return; }
+  me = session.user.id; $("list").hidden = false; $("detail").hidden = true; await loadGroups();
+}
+async function loadGroups(){
+  const { data } = await db.from("savings_groups").select("*").order("id"); groups = data || [];
+  const ul = $("groups"); ul.textContent = ""; if (!groups.length){ ul.textContent = "You are not in any group yet."; return; }
+  groups.forEach(g => { const li = el("li"), d = el("div", g.name); d.appendChild(el("span", (g.frequency || "") + (g.contribution_ugx ? " | usual UGX " + fmt(g.contribution_ugx) : ""))); li.appendChild(d);
+    const b = el("button", "Open", "btn sm"); b.onclick = () => openGroup(g.id); li.appendChild(b); ul.appendChild(li); });
+}
+$("mk").onclick = async () => { const { error } = await db.rpc("create_savings_group", { p_name: $("gn").value, p_desc: $("gd").value, p_amount: Number($("ga").value) || 0, p_freq: $("gf").value, p_display: $("gy").value }); if (error){ $("msg").textContent = error.message; return; } $("msg").textContent = ""; loadGroups(); };
+$("jn").onclick = async () => { const { error } = await db.rpc("join_savings_group", { p_code: $("jc").value, p_display: $("jy").value }); if (error){ $("msg").textContent = error.message; return; } $("msg").textContent = ""; loadGroups(); };
+async function openGroup(id){
+  const g = groups.find(x => x.id === id);
+  const [{ data: members }, { data: entries }] = await Promise.all([db.from("savings_members").select("*").eq("group_id", id), db.from("savings_entries").select("*").eq("group_id", id).order("id", { ascending: false }).limit(300)]);
+  const admin = (members || []).some(m => m.user_id === me && m.role === "admin"), name = uid => ((members || []).find(m => m.user_id === uid) || {}).display_name || "Member";
+  const conf = (entries || []).filter(e => e.status === "confirmed"), sum = (k, uid) => conf.filter(e => e.kind === k && (!uid || e.user_id === uid)).reduce((a, e) => a + Number(e.amount_ugx), 0);
+  const d = $("detail"); d.textContent = ""; $("list").hidden = true; d.hidden = false;
+  const back = el("button", "Back to my groups", "btn grey"); back.onclick = boot; d.appendChild(back);
+  const s1 = el("section"); s1.append(el("h2", g.name), el("p", (g.description || "") + " Group code to share: " + g.code));
+  const st = el("div", null, "stats"); [["Saved", sum("contribution")], ["Paid out", sum("payout")], ["In the pot", sum("contribution") - sum("payout")]].forEach(([a, b]) => { const x = el("div", null, "stat"); x.append(el("small", a), el("b", "UGX " + fmt(b))); st.appendChild(x); }); s1.appendChild(st); d.appendChild(s1);
+  const s2 = el("section"); s2.appendChild(el("h3", "Record my contribution")); s2.appendChild(el("label", "Amount (UGX)")); const am = el("input"); am.type = "number"; am.inputMode = "numeric"; s2.appendChild(am);
+  s2.appendChild(el("label", "Note (for example: cash to treasurer, MoMo ID)")); const nt = el("input"); s2.appendChild(nt); const bt = el("button", "Record contribution", "btn"); const ms = el("div", null, "msg err"); s2.append(bt, ms);
+  bt.onclick = async () => { const { error } = await db.rpc("add_savings_entry", { p_group: id, p_amount: Number(am.value), p_note: nt.value }); if (error){ ms.textContent = error.message; return; } openGroup(id); }; d.appendChild(s2);
+  const pend = (entries || []).filter(e => e.status === "pending" && e.kind === "contribution");
+  if (admin){
+    const s3 = el("section"); s3.appendChild(el("h3", "Waiting for your confirmation")); if (!pend.length) s3.appendChild(el("p", "Nothing waiting."));
+    pend.forEach(e => { const li = el("div"); li.style.padding = "8px 0"; li.appendChild(el("div", `${name(e.user_id)}: UGX ${fmt(e.amount_ugx)}${e.note ? " (" + e.note + ")" : ""}`));
+      [["Confirm", true, ""], ["Reject", false, "red"]].forEach(([t, ok, c]) => { const b = el("button", t, "btn sm " + c); b.onclick = async () => { const { error } = await db.rpc("review_savings_entry", { p_id: e.id, p_approve: ok }); if (error) alert(error.message); else openGroup(id); }; li.appendChild(b); }); s3.appendChild(li); });
+    d.appendChild(s3);
+    const s4 = el("section"); s4.appendChild(el("h3", "Record a payout to a member")); const sel = el("select"); (members || []).forEach(m => sel.add(new Option(m.display_name, m.user_id))); s4.appendChild(sel);
+    s4.appendChild(el("label", "Amount (UGX)")); const pa = el("input"); pa.type = "number"; pa.inputMode = "numeric"; s4.appendChild(pa); s4.appendChild(el("label", "Note")); const pn = el("input"); s4.appendChild(pn);
+    const pb = el("button", "Record payout", "btn grey"), pm = el("div", null, "msg err"); s4.append(pb, pm);
+    pb.onclick = async () => { const { error } = await db.rpc("record_savings_payout", { p_group: id, p_user: sel.value, p_amount: Number(pa.value), p_note: pn.value }); if (error){ pm.textContent = error.message; return; } openGroup(id); }; d.appendChild(s4);
+  }
+  const s5 = el("section"); s5.appendChild(el("h3", "Members")); const ul = el("ul");
+  (members || []).forEach(m => { const li = el("li"), x = el("div", m.display_name + (m.role === "admin" ? " (admin)" : "")); li.append(x, el("div", "UGX " + fmt(sum("contribution", m.user_id) - sum("payout", m.user_id)))); ul.appendChild(li); }); s5.appendChild(ul); d.appendChild(s5);
+  const s6 = el("section"); s6.appendChild(el("h3", "History")); const hl = el("ul");
+  (entries || []).forEach(e => { const li = el("li"), x = el("div", `${name(e.user_id)}: ${e.kind} UGX ${fmt(e.amount_ugx)}`); x.appendChild(el("span", `${e.status}${e.note ? " | " + e.note : ""} | ${new Date(e.created_at).toLocaleDateString()}`)); li.appendChild(x); hl.appendChild(li); }); s6.appendChild(hl);
+  const ex = el("button", "Download records (CSV)", "btn grey"); ex.onclick = () => { const rows = [["date","member","type","amount_ugx","status","note"]].concat((entries || []).map(e => [e.created_at, name(e.user_id), e.kind, e.amount_ugx, e.status, e.note || ""]));
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([rows.map(r => r.map(c => JSON.stringify(String(c))).join(",")).join("\n")], { type: "text/csv" })); a.download = g.name.replace(/\W+/g, "-") + ".csv"; a.click(); }; s6.appendChild(ex); d.appendChild(s6);
+}
+boot();
+</script></body></html>
