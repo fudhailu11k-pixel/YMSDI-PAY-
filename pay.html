@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>YMSDI Pay</title>
+<link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#065f33"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <style>
 :root{--g:#065f33;--gd:#0a2418;--bg:#f4f6f3;--card:#fff;--ink:#10231a;--mute:#5b6b62;--line:#dfe6e0;--warn:#fff4d6;--err:#b3261e}
@@ -43,6 +44,7 @@ li:last-child{border:0}li span{color:var(--mute);font-size:.85rem;display:block}
   <div id="emrow"><label for="em">Email</label><input id="em" type="email" autocomplete="email"></div>
   <div id="pwrow"><label for="pw" id="pwl">Password</label><input id="pw" type="password" autocomplete="current-password"></div>
   <div id="pw2row" hidden><label for="pw2">Repeat password</label><input id="pw2" type="password" autocomplete="new-password"></div>
+  <div id="termsrow" hidden><label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px"><input type="checkbox" id="terms" style="width:auto;min-width:0;margin-top:4px;flex:none"><span>I am 18 or older and I agree to the <a href="terms.html" target="_blank" rel="noopener">Terms</a> and the <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.</span></label></div>
   <button class="btn" id="login">Sign in</button>
   <div class="msg err" id="autherr" role="alert"></div>
   <p style="margin-top:14px;display:flex;flex-direction:column;gap:8px"><a href="#" id="lnk1" style="color:var(--g)"></a><a href="#" id="lnk2" style="color:var(--g)"></a></p>
@@ -68,6 +70,7 @@ li:last-child{border:0}li span{color:var(--mute);font-size:.85rem;display:block}
     <div class="msg" id="msg" role="status"></div>
     <div id="walletbox" hidden>
       <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+      <div class="demo" style="margin:10px 0">Safety: we never ask for your wallet recovery phrase, PIN or password, by chat, call or SMS. <a href="learn.html">Learn how to stay safe</a>.</div>
       <label for="chain">Or pay from your own crypto wallet</label><select id="chain"></select>
       <button class="btn" id="wgo">Pay with wallet</button>
       <div class="quote" id="wbox" style="white-space:pre-wrap;word-break:break-all"></div>
@@ -78,6 +81,7 @@ li:last-child{border:0}li span{color:var(--mute);font-size:.85rem;display:block}
 
   <section id="t-hist" hidden><ul id="hist"></ul><h3>Wallet payments</h3><ul id="worders"></ul></section>
   <section id="t-dep" hidden>
+    <div class="demo" style="margin:10px 0">Safety: we never ask for your wallet recovery phrase, PIN or password, by chat, call or SMS. <a href="learn.html">Learn how to stay safe</a>.</div>
     <p id="depinfo">Get a deposit address and send USDT to it. Your balance updates after the network confirms.</p>
     <button class="btn" id="getaddr">Get my deposit address</button>
     <div class="quote" id="addrbox"></div><div class="msg" id="depmsg" role="status"></div>
@@ -101,6 +105,7 @@ li:last-child{border:0}li span{color:var(--mute);font-size:.85rem;display:block}
   </section>
   <section id="t-more" hidden><ul id="more"></ul></section>
 </div>
+<footer style="margin:24px 0;font-size:.9rem;color:var(--mute);text-align:center"><a href="learn.html" style="color:inherit">Learn</a> | <a href="terms.html" style="color:inherit">Terms</a> | <a href="privacy.html" style="color:inherit">Privacy</a><span id="helpwrap" hidden> | <a href="#" id="helplink" style="color:inherit">Help on WhatsApp</a></span><span id="instwrap" hidden> | <a href="#" id="installbtn" style="color:inherit">Install app</a></span></footer>
 </main>
 
 <script>
@@ -170,6 +175,7 @@ async function doQuote(){
 $("amt").addEventListener("input", quote); $("cat").addEventListener("change", quote);
 
 $("go").addEventListener("click", async () => {
+  if (!confirm(`Pay UGX ${fmt(Number($("amt").value) || 0)} to ${$("acct").value}?\n\nCheck the number carefully. Payments cannot always be reversed.`)) return;
   const btn = $("go"); btn.disabled = true; say("Processing...");
   const { data, error } = await db.rpc("pay_bill", { p_biller: Number($("cat").value), p_account: $("acct").value, p_ugx: Number($("amt").value) });
   btn.disabled = false;
@@ -197,6 +203,8 @@ async function loadSettings(){
   $("depinfo").textContent = live ? `Get a deposit address and send USDT on ${S.deposit_network}. Sending on another network can lose your funds. Your balance updates after confirmation.` : "Deposits are available in live mode only.";
   const on = new Set(flags.filter(x => x.enabled).map(x => x.key));
   document.querySelector('[data-t="out"]').hidden = !on.has("cashout");
+  const wa = (S.support_whatsapp || "").replace(/\D/g, "");
+  if (wa){ $("helplink").href = "https://wa.me/" + wa; $("helplink").target = "_blank"; $("helplink").rel = "noopener"; $("helpwrap").hidden = false; }
 }
 async function loadCashouts(){
   const { data } = await db.from("cashouts").select("*").order("id", {ascending:false}).limit(10);
@@ -322,7 +330,7 @@ async function loadWalletOrders(){
 function showAuth(mode){
   amode = mode; show("app", false); show("auth", true); $("signout").hidden = true;
   $("authtitle").textContent = { signin: "Sign in", signup: "Create your account", reset: "Reset your password", newpw: "Choose a new password" }[mode];
-  $("emrow").hidden = mode === "newpw"; $("pwrow").hidden = mode === "reset"; $("pw2row").hidden = !(mode === "signup" || mode === "newpw");
+  $("emrow").hidden = mode === "newpw"; $("termsrow").hidden = mode !== "signup"; $("pwrow").hidden = mode === "reset"; $("pw2row").hidden = !(mode === "signup" || mode === "newpw");
   $("pwl").textContent = mode === "newpw" ? "New password (at least 8 characters)" : mode === "signup" ? "Create a password (at least 8 characters)" : "Password";
   $("pw").autocomplete = mode === "signin" ? "current-password" : "new-password";
   $("login").textContent = { signin: "Sign in", signup: "Create account", reset: "Send reset link", newpw: "Save new password" }[mode];
@@ -340,7 +348,8 @@ $("login").addEventListener("click", async () => {
       if (!email){ asay("Enter your email."); return; }
       if (pw.length < 8){ asay("Use at least 8 characters for your password."); return; }
       if (pw !== pw2){ asay("The two passwords do not match."); return; }
-      const { data, error } = await db.auth.signUp({ email, password: pw, options: { emailRedirectTo: location.origin + "/pay.html" } });
+      if (!$("terms").checked){ asay("Please tick the box to accept the Terms and the Privacy Policy."); return; }
+      const { data, error } = await db.auth.signUp({ email, password: pw, options: { emailRedirectTo: location.origin + "/pay.html", data: { accepted_terms_at: new Date().toISOString(), terms_version: "draft-1" } } });
       if (error){ asay(error.message); return; }
       if (data.session) boot(); else asay("Account created. Open the confirmation email we sent, tap the link, then come back and sign in. Check your spam folder too.", true);
     } else if (amode === "reset"){
@@ -364,6 +373,10 @@ const _boot = boot; boot = async function(){
   await _boot();
   if (!$("app").hidden){ $("signout").hidden = false; await loadSettings(); setupWallet(); loadCashouts(); loadKyc(); loadWalletOrders(); }
 };
+let deferredInstall;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferredInstall = e; $("instwrap").hidden = false; });
+$("installbtn").addEventListener("click", async e => { e.preventDefault(); if (!deferredInstall) return; deferredInstall.prompt(); await deferredInstall.userChoice; deferredInstall = null; $("instwrap").hidden = true; });
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 boot();
 </script>
 </body>
