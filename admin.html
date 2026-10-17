@@ -48,10 +48,10 @@ async function fn(name, method){ const { data: { session } } = await db.auth.get
 
 async function features(){
   const v = view();
-  const { data: rt } = await db.from("rates").select("ugx_per_usdt").eq("pair","USDT_UGX").single();
-  const rr = row("USDT to UGX rate", "Used for every quote. Update it often, or ask your partner for a live feed."); const rl = el("div", null, "line");
+  const { data: rt } = await db.from("rates").select("ugx_per_usdt,updated_at").eq("pair","USDT_UGX").single();
+  const rr = row("USDT to UGX rate", "Used for every quote. In auto mode (see Settings, Exchange rate) it follows the market." + (rt && rt.updated_at ? " Last updated: " + new Date(rt.updated_at).toLocaleString() + "." : "")); const rl = el("div", null, "line");
   const ri = el("input"); ri.type = "number"; ri.value = rt ? rt.ugx_per_usdt : 3650;
-  rl.append(ri, btn("Save rate", () => run(db.rpc("admin_set_rate", {p_rate: Number(ri.value)})))); rr.appendChild(rl); v.appendChild(rr);
+  rl.append(ri, btn("Save rate", () => run(db.rpc("admin_set_rate", {p_rate: Number(ri.value)}))), btn("Update from market now", async () => { try { const j = await fn("update-rate"); toast(j.rate ? "Rate updated to " + j.rate : (j.skipped || "Done")); features(); } catch (e){ toast(e.message, true); } }, "grey")); rr.appendChild(rl); v.appendChild(rr);
   const { data } = await db.from("feature_flags").select("*").order("phase").order("label");
   (data || []).forEach(f => {
     const r = row(f.label, "Phase " + f.phase); const line = el("div", null, "line");
@@ -194,7 +194,7 @@ async function settings(){
   const v = view(); const { data } = await db.from("app_settings").select("*").order("key");
   const groups = [["Mode and safety", k => ["payments_mode","live_signoff","maintenance","kyc_required"].includes(k)], ["Limits and protection", k => /max_|_limit|min_cashout|new_user|tx_per/.test(k)],
     ["Support and company", k => /^(support_|company|partner_name)/.test(k)], ["Wallet receiving addresses", k => k.startsWith("addr_")],
-    ["Wallet tokens and networks", k => /^(usdt_|dec_|chainid_|client_rpc|deposit_network)/.test(k)], ["Server connections", k => /^(rpc_|confirm_|wallet_order)/.test(k)], ["Other", () => true]];
+    ["Wallet tokens and networks", k => /^(usdt_|dec_|chainid_|client_rpc|deposit_network)/.test(k)], ["Server connections", k => /^(rpc_|confirm_|wallet_order)/.test(k)], ["Exchange rate", k => k.startsWith("rate_")], ["Other", () => true]];
   const used = new Set();
   groups.forEach(([title, test]) => {
     const items = (data || []).filter(s => !used.has(s.key) && test(s.key)); if (!items.length) return; items.forEach(s => used.add(s.key));

@@ -54,11 +54,12 @@ li:last-child{border:0}li span{color:var(--mute);font-size:.85rem;display:block}
   <div class="bal"><small id="ballabel">Balance</small><b id="bal">0.00 USDT</b><small id="ugxv"></small></div>
   <section id="walletbar" style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:12px">
     <b>Crypto wallet</b>
-    <div class="quote" id="walletstate">Not connected. Choose your wallet.</div>
+    <div class="quote" id="walletstate" style="white-space:pre-wrap;word-break:break-all">Not connected. Choose your wallet.</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
       <button class="btn" style="margin:0" data-w="trust">Trust Wallet</button><button class="btn" style="margin:0" data-w="metamask">MetaMask</button>
       <button class="btn" style="margin:0" data-w="phantom">Phantom</button><button class="btn" style="margin:0" data-w="tron">TronLink</button>
     </div>
+    <div class="quote" id="walletdiag" style="font-size:.8rem"></div>
     <div class="quote" id="walletnote"></div>
   </section>
   <nav role="tablist">
@@ -177,7 +178,7 @@ async function refresh(){
   const { data, error } = await db.rpc("ensure_wallet");
   if (error){ say(error.message, true); return; }
   $("bal").textContent = fmt(data.usdt_balance) + " USDT";
-  $("ugxv").textContent = "Illustrative value: UGX " + fmt(data.usdt_balance * rate);
+  $("ugxv").textContent = "Illustrative value: UGX " + fmt(data.usdt_balance * rate); paintBalance();
   const { data: rows } = await db.from("wallet_ledger").select("*").order("id", {ascending:false}).limit(30);
   const ul = $("hist"); ul.textContent = "";
   if (!rows || !rows.length){ ul.textContent = "No activity yet. Make your first demo payment."; return; }
@@ -377,7 +378,7 @@ $("login").addEventListener("click", async () => {
       if (pw.length < 8){ asay("Use at least 8 characters for your password."); return; }
       if (pw !== pw2){ asay("The two passwords do not match."); return; }
       if (!$("terms").checked){ asay("Please tick the box to accept the Terms and the Privacy Policy."); return; }
-      const { data, error } = await db.auth.signUp({ email, password: pw, options: { emailRedirectTo: location.origin + "/pay.html", data: { accepted_terms_at: new Date().toISOString(), terms_version: "draft-1" } } });
+      const { data, error } = await db.auth.signUp({ email, password: pw, options: { emailRedirectTo: location.origin + "/pay.html", data: { accepted_terms_at: new Date().toISOString(), terms_version: "tos-1.0 / privacy-1.0" } } });
       if (error){ asay(error.message); return; }
       if (data.session) boot(); else asay("Account created. Open the confirmation email we sent, tap the link, then come back and sign in. Check your spam folder too.", true);
     } else if (amode === "reset"){
@@ -450,32 +451,93 @@ function applyLang(){
 const ls = $("lang"); Object.entries(LANGS).forEach(([k, v]) => ls.add(new Option(v, k))); ls.value = LANG;
 ls.addEventListener("change", () => { LANG = ls.value; try { localStorage.setItem("ymsdi_lang", LANG); } catch (e) {} applyLang(); });
 
-// ---- Always-visible wallet panel ----
-function setConn(addr, label, chain){
-  $("walletstate").textContent = `Connected: ${addr.slice(0, 6)}...${addr.slice(-4)} (${label})`;
-  [$("chain"), $("cochain")].forEach(sel => { if (sel && [...sel.options].some(o => o.value === chain)) sel.value = chain; });
+// ---- Wallet panel: connect, show real balance ----
+let WALLET = null;
+const PUB_RPC = { bnb: "https://bsc-dataseed.binance.org", polygon: "https://polygon-rpc.com" };
+async function jrpc(url, method, params){
+  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
+  const j = await r.json(); if (j.error) throw new Error(j.error.message || "RPC error"); return j.result;
 }
+function evmProvider(kind){
+  const w = window; let list = w.ethereum && Array.isArray(w.ethereum.providers) && w.ethereum.providers.length ? w.ethereum.providers.slice() : (w.ethereum ? [w.ethereum] : []);
+  if (w.trustwallet && w.trustwallet.ethereum) list.push(w.trustwallet.ethereum);
+  return list.find(p => kind === "trust" ? (p.isTrust || p.isTrustWallet) : (p.isMetaMask && !p.isTrust)) || list[0] || null;
+}
+function diag(){
+  const d = $("walletdiag"); if (!d) return;
+  d.textContent = "Detected in this browser: EVM wallet " + (evmProvider("trust") ? "yes" : "no") + " | Phantom " + (((window.phantom && window.phantom.solana) || window.solana) ? "yes" : "no") + " | TronLink " + (window.tronWeb ? "yes" : "no");
+}
+setTimeout(diag, 800); setTimeout(diag, 3500);
+async function evmBalances(addr){
+  const out = {};
+  for (const c of ["bnb", "polygon"]){
+    if (!S["usdt_" + c]) continue;
+    try {
+      const url = S["client_rpc_" + c] || PUB_RPC[c], data = "0x70a08231" + addr.toLowerCase().replace("0x", "").padStart(64, "0");
+      const [u, n] = await Promise.all([jrpc(url, "eth_call", [{ to: S["usdt_" + c], data }, "latest"]), jrpc(url, "eth_getBalance", [addr, "latest"])]);
+      out[c] = { usdt: Number(BigInt(u)) / Math.pow(10, Number(S["dec_" + c] || 18)), native: Number(BigInt(n)) / 1e18, sym: c === "bnb" ? "BNB" : "POL" };
+    } catch (e){ out[c] = { err: e.message || "failed" }; }
+  }
+  return out;
+}
+async function solBalances(addr){
+  const url = S.client_rpc_solana || "https://api.mainnet-beta.solana.com";
+  const t = await jrpc(url, "getTokenAccountsByOwner", [addr, { mint: S.usdt_solana }, { encoding: "jsonParsed" }]);
+  const usdt = (t.value || []).reduce((a, x) => a + Number(x.account.data.parsed.info.tokenAmount.uiAmount || 0), 0);
+  const lam = (await jrpc(url, "getBalance", [addr])).value;
+  return { solana: { usdt, native: lam / 1e9, sym: "SOL" } };
+}
+async function tronBalances(addr){
+  const c = await window.tronWeb.contract().at(S.usdt_tron); let raw = await c.balanceOf(addr).call(); if (raw && raw.balance !== undefined) raw = raw.balance;
+  const trx = await window.tronWeb.trx.getBalance(addr);
+  return { tron: { usdt: Number(raw.toString()) / Math.pow(10, Number(S.dec_tron || 6)), native: Number(trx) / 1e6, sym: "TRX" } };
+}
+async function loadWalletBalance(){
+  if (!WALLET) return;
+  try { WALLET.err = null; WALLET.bal = WALLET.type === "evm" ? await evmBalances(WALLET.addr) : WALLET.type === "solana" ? await solBalances(WALLET.addr) : await tronBalances(WALLET.addr); }
+  catch (e){ WALLET.bal = {}; WALLET.err = e.message || "failed"; }
+  renderWallet();
+}
+function renderWallet(){
+  const a = WALLET.addr, lines = [`Connected: ${a.slice(0, 6)}...${a.slice(-4)}`];
+  Object.entries(WALLET.bal || {}).forEach(([c, b]) => lines.push(b.err ? `${CH[c]}: could not read the balance (${b.err})` : `${CH[c]}: ${fmt(b.usdt)} USDT | gas ${b.native.toFixed(4)} ${b.sym}`));
+  if (WALLET.err) lines.push("Could not read the balance: " + WALLET.err);
+  $("walletstate").textContent = lines.join("\n"); paintBalance();
+}
+function paintBalance(){
+  if (!WALLET || !WALLET.bal) return;
+  let k = $("chain").value; if (!WALLET.bal[k] || WALLET.bal[k].err) k = Object.keys(WALLET.bal).find(x => !WALLET.bal[x].err); if (!k) return;
+  const b = WALLET.bal[k]; $("ballabel").textContent = "Wallet balance on " + CH[k]; $("bal").textContent = fmt(b.usdt) + " USDT"; $("ugxv").textContent = "Illustrative value: UGX " + fmt(b.usdt * rate);
+}
+const withTimeout = (p, ms, msg) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error(msg)), ms))]);
 async function connectKind(kind){
-  const st = $("walletstate"), here = location.href; st.textContent = "Connecting...";
+  const st = $("walletstate"), here = location.href; st.textContent = "Connecting... approve in your wallet if it asks.";
   try {
     if (kind === "trust" || kind === "metamask"){
-      if (!window.ethereum){
-        st.textContent = "Opening the wallet app. Sign in again inside it if asked.";
+      const eth = evmProvider(kind);
+      if (!eth){
+        st.textContent = "No wallet found in this browser. Opening the wallet app. Sign in again inside it, then tap the button again.";
         location.href = kind === "trust" ? "https://link.trustwallet.com/open_url?coin_id=20000714&url=" + encodeURIComponent(here) : "https://metamask.app.link/dapp/" + location.host + location.pathname + location.search; return;
       }
-      const accs = await window.ethereum.request({ method: "eth_requestAccounts" }); setConn(accs[0], "BNB Chain / Polygon", "bnb");
+      const accs = await withTimeout(eth.request({ method: "eth_requestAccounts" }), 60000, "No answer from the wallet. Open your wallet, approve the connection, then tap again.");
+      WALLET = { type: "evm", addr: accs[0] };
+      if (eth.on) eth.on("accountsChanged", a => { if (a && a[0] && WALLET){ WALLET.addr = a[0]; loadWalletBalance(); } });
     } else if (kind === "phantom"){
       const p = (window.phantom && window.phantom.solana) || window.solana;
-      if (!p){ st.textContent = "Opening Phantom. Sign in again inside it if asked."; location.href = "https://phantom.app/ul/browse/" + encodeURIComponent(here) + "?ref=" + encodeURIComponent(location.origin); return; }
-      setConn((await p.connect()).publicKey.toString(), "Solana", "solana");
+      if (!p){ st.textContent = "No Phantom found in this browser. Opening Phantom. Sign in again inside it, then tap the button again."; location.href = "https://phantom.app/ul/browse/" + encodeURIComponent(here) + "?ref=" + encodeURIComponent(location.origin); return; }
+      const r = await withTimeout(p.connect(), 60000, "No answer from Phantom. Open it, approve the connection, then tap again."); WALLET = { type: "solana", addr: r.publicKey.toString() };
     } else {
-      if (!window.tronWeb){ st.textContent = "Open this page inside the TronLink app browser (Discover, then type this site's address), then tap TronLink again."; return; }
-      if (window.tronLink && window.tronLink.request) await window.tronLink.request({ method: "tron_requestAccounts" });
-      const a = window.tronWeb.defaultAddress && window.tronWeb.defaultAddress.base58; if (!a) throw new Error("Unlock your wallet and try again."); setConn(a, "Tron", "tron");
+      if (!window.tronWeb){ st.textContent = "No Tron wallet found here. Open this page inside the TronLink app browser (Discover, then type this site's address), then tap TronLink again."; return; }
+      if (window.tronLink && window.tronLink.request) await withTimeout(window.tronLink.request({ method: "tron_requestAccounts" }), 60000, "No answer from TronLink. Approve the connection, then tap again.");
+      const a = window.tronWeb.defaultAddress && window.tronWeb.defaultAddress.base58; if (!a) throw new Error("Unlock your wallet and try again."); WALLET = { type: "tron", addr: a };
     }
+    const first = WALLET.type === "evm" ? "bnb" : WALLET.type; [$("chain"), $("cochain")].forEach(sel => { if (sel && [...sel.options].some(o => o.value === first)) sel.value = first; });
+    st.textContent = "Connected. Reading your balance..."; await loadWalletBalance();
   } catch (e){ st.textContent = (e && e.message) || "Could not connect."; }
 }
 document.querySelectorAll("#walletbar [data-w]").forEach(b => b.addEventListener("click", () => connectKind(b.dataset.w)));
+$("chain").addEventListener("change", paintBalance);
+setInterval(() => { if (WALLET) loadWalletBalance(); }, 30000);
 
 // ---- Pay a shop (QR code or shop code) ----
 let curShop = null;
