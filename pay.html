@@ -52,6 +52,15 @@ li:last-child{border:0}li span{color:var(--mute);font-size:.85rem;display:block}
 
 <div id="app" hidden>
   <div class="bal"><small id="ballabel">Balance</small><b id="bal">0.00 USDT</b><small id="ugxv"></small></div>
+  <section id="walletbar" style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:12px">
+    <b>Crypto wallet</b>
+    <div class="quote" id="walletstate">Not connected. Choose your wallet.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+      <button class="btn" style="margin:0" data-w="trust">Trust Wallet</button><button class="btn" style="margin:0" data-w="metamask">MetaMask</button>
+      <button class="btn" style="margin:0" data-w="phantom">Phantom</button><button class="btn" style="margin:0" data-w="tron">TronLink</button>
+    </div>
+    <div class="quote" id="walletnote"></div>
+  </section>
   <nav role="tablist">
     <button role="tab" aria-selected="true" data-t="pay">Pay</button>
     <button role="tab" aria-selected="false" data-t="hist">History</button>
@@ -272,7 +281,7 @@ function setupWallet(){
   const on = new Set(flags.filter(x => x.enabled).map(x => x.key));
   const chains = Object.keys(CH).filter(c => on.has("chain_" + c) && S["addr_" + c]);
   const live = (S.payments_mode === "live" || (S.payments_mode === "pilot" && isTester)) && on.has("wallet_pay") && chains.length;
-  $("walletbox").hidden = !live;
+  $("walletbox").hidden = !live; $("walletnote").textContent = live ? "Wallet payments are on. Connect, then pick a purchase in the Pay tab." : "You can connect your wallet now to test the connection. Paying from it starts when the admin switches on pilot or live mode and the wallet features.";
   const sel = $("chain"); sel.textContent = ""; chains.forEach(c => sel.add(new Option(CH[c], c)));
   const cs = $("cochain"); cs.textContent = ""; chains.forEach(c => cs.add(new Option(CH[c], c))); $("cowallet").hidden = !(live && on.has("cashout"));
 }
@@ -440,6 +449,33 @@ function applyLang(){
 }
 const ls = $("lang"); Object.entries(LANGS).forEach(([k, v]) => ls.add(new Option(v, k))); ls.value = LANG;
 ls.addEventListener("change", () => { LANG = ls.value; try { localStorage.setItem("ymsdi_lang", LANG); } catch (e) {} applyLang(); });
+
+// ---- Always-visible wallet panel ----
+function setConn(addr, label, chain){
+  $("walletstate").textContent = `Connected: ${addr.slice(0, 6)}...${addr.slice(-4)} (${label})`;
+  [$("chain"), $("cochain")].forEach(sel => { if (sel && [...sel.options].some(o => o.value === chain)) sel.value = chain; });
+}
+async function connectKind(kind){
+  const st = $("walletstate"), here = location.href; st.textContent = "Connecting...";
+  try {
+    if (kind === "trust" || kind === "metamask"){
+      if (!window.ethereum){
+        st.textContent = "Opening the wallet app. Sign in again inside it if asked.";
+        location.href = kind === "trust" ? "https://link.trustwallet.com/open_url?coin_id=20000714&url=" + encodeURIComponent(here) : "https://metamask.app.link/dapp/" + location.host + location.pathname + location.search; return;
+      }
+      const accs = await window.ethereum.request({ method: "eth_requestAccounts" }); setConn(accs[0], "BNB Chain / Polygon", "bnb");
+    } else if (kind === "phantom"){
+      const p = (window.phantom && window.phantom.solana) || window.solana;
+      if (!p){ st.textContent = "Opening Phantom. Sign in again inside it if asked."; location.href = "https://phantom.app/ul/browse/" + encodeURIComponent(here) + "?ref=" + encodeURIComponent(location.origin); return; }
+      setConn((await p.connect()).publicKey.toString(), "Solana", "solana");
+    } else {
+      if (!window.tronWeb){ st.textContent = "Open this page inside the TronLink app browser (Discover, then type this site's address), then tap TronLink again."; return; }
+      if (window.tronLink && window.tronLink.request) await window.tronLink.request({ method: "tron_requestAccounts" });
+      const a = window.tronWeb.defaultAddress && window.tronWeb.defaultAddress.base58; if (!a) throw new Error("Unlock your wallet and try again."); setConn(a, "Tron", "tron");
+    }
+  } catch (e){ st.textContent = (e && e.message) || "Could not connect."; }
+}
+document.querySelectorAll("#walletbar [data-w]").forEach(b => b.addEventListener("click", () => connectKind(b.dataset.w)));
 
 // ---- Pay a shop (QR code or shop code) ----
 let curShop = null;
