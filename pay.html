@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>YMSDI Pay</title>
+<link rel="preconnect" href="https://svzyycobhthrnrljxghp.supabase.co" crossorigin><link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#065f33"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <style>
@@ -35,7 +36,7 @@ li:last-child{border:0}li span{color:var(--mute);font-size:.85rem;display:block}
 </style>
 </head>
 <body>
-<header style="display:flex;justify-content:space-between;align-items:center"><a href="pay.html">YMSDI Pay</a><select id="lang" aria-label="Language" style="margin-left:auto;margin-right:8px;width:auto;min-width:0;flex:none;padding:6px 8px;background:#0a2418;color:#fff;border:1px solid #fff"></select><button id="signout" hidden style="background:transparent;border:1px solid #fff;color:#fff;border-radius:8px;padding:6px 12px;font:inherit;cursor:pointer">Sign out</button></header>
+<header style="display:flex;justify-content:space-between;align-items:center"><a href="pay.html">YMSDI Pay</a><button id="avbtn" hidden aria-label="My profile" style="margin-left:auto;margin-right:8px;background:transparent;border:2px solid #fff;border-radius:50%;padding:0;width:38px;height:38px;cursor:pointer;flex:none;overflow:hidden"><img id="hav" alt="" width="34" height="34" decoding="async" style="border-radius:50%;object-fit:cover;display:block;width:34px;height:34px"></button><select id="lang" aria-label="Language" style="margin-left:auto;margin-right:8px;width:auto;min-width:0;flex:none;padding:6px 8px;background:#0a2418;color:#fff;border:1px solid #fff"></select><button id="signout" hidden style="background:transparent;border:1px solid #fff;color:#fff;border-radius:8px;padding:6px 12px;font:inherit;cursor:pointer">Sign out</button></header>
 <main>
 <div class="demo" id="demo">Demo mode. Balances are fictional and no real money moves.</div>
 
@@ -55,16 +56,25 @@ li:last-child{border:0}li span{color:var(--mute);font-size:.85rem;display:block}
   <section id="walletbar" style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:12px">
     <b>Crypto wallet</b>
     <div class="quote" id="walletstate" style="white-space:pre-wrap;word-break:break-all">Not connected. Choose your wallet.</div>
+    <button class="btn" id="wcqr" style="margin:8px 0 0">Connect with QR code (Trust, MetaMask and others)</button>
+    <div id="wcbox" hidden style="margin-top:10px;text-align:center">
+      <div id="wcqrimg" style="background:#fff;padding:10px;border-radius:12px;max-width:260px;margin:auto"></div>
+      <div class="quote">Scan this with your wallet app. On this phone, tap a button below instead.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><a class="btn" id="wclink" style="margin:0;display:block;text-decoration:none;text-align:center" target="_blank" rel="noopener">Open Trust Wallet</a><a class="btn" id="wclink2" style="margin:0;display:block;text-decoration:none;text-align:center" target="_blank" rel="noopener">Open MetaMask</a></div>
+      <button class="btn" id="wccopy" style="background:var(--gd)">Copy connection link</button>
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
       <button class="btn" style="margin:0" data-w="trust">Trust Wallet</button><button class="btn" style="margin:0" data-w="metamask">MetaMask</button>
       <button class="btn" style="margin:0" data-w="phantom">Phantom</button><button class="btn" style="margin:0" data-w="tron">TronLink</button>
     </div>
+    <button class="btn" id="wdisc" hidden style="background:var(--err)">Disconnect wallet</button>
     <div class="quote" id="walletdiag" style="font-size:.8rem"></div>
     <div class="quote" id="walletnote"></div>
   </section>
   <nav role="tablist">
     <button role="tab" aria-selected="true" data-t="pay">Pay</button>
     <button role="tab" aria-selected="false" data-t="hist">History</button>
+    <button role="tab" aria-selected="false" data-t="me" id="metab">Profile</button>
     <button role="tab" aria-selected="false" data-t="shop" id="shoptab" hidden>Pay shop</button>
     <button role="tab" aria-selected="false" data-t="dep">Deposit</button>
     <button role="tab" aria-selected="false" data-t="out">Cash out</button>
@@ -83,7 +93,7 @@ li:last-child{border:0}li span{color:var(--mute);font-size:.85rem;display:block}
       <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
       <div class="demo" style="margin:10px 0">Safety: we never ask for your wallet recovery phrase, PIN or password, by chat, call or SMS. <a href="learn.html">Learn how to stay safe</a>.</div>
       <label for="chain">Or pay from your own crypto wallet</label><select id="chain"></select>
-      <button class="btn" id="wconnect" style="background:var(--gd)">Connect wallet</button><div class="quote" id="waddr"></div>
+      <button class="btn" id="wconnect" hidden style="background:var(--gd)">Connect wallet</button><div class="quote" id="waddr"></div>
       <button class="btn" id="wgo">Pay with wallet</button>
       <div class="quote" id="wbox" style="white-space:pre-wrap;word-break:break-all"></div>
       <div class="msg" id="wmsg" role="status"></div>
@@ -92,7 +102,7 @@ li:last-child{border:0}li span{color:var(--mute);font-size:.85rem;display:block}
   </section>
 
   <section id="t-hist" hidden><ul id="hist"></ul><h3>Wallet payments</h3><ul id="worders"></ul>
-    <h3>SMS receipts</h3><label for="myphone">Your phone number</label><input id="myphone" inputmode="tel" placeholder="07XXXXXXXX"><button class="btn" id="savephone">Save for SMS receipts</button><div class="msg" id="phonemsg" role="status"></div>
+    
   </section>
   <section id="t-dep" hidden>
     <div class="demo" style="margin:10px 0">Safety: we never ask for your wallet recovery phrase, PIN or password, by chat, call or SMS. <a href="learn.html">Learn how to stay safe</a>.</div>
@@ -131,9 +141,35 @@ li:last-child{border:0}li span{color:var(--mute);font-size:.85rem;display:block}
     </div>
     <div class="msg" id="shopmsg" role="status"></div>
   </section>
+  <section id="t-me" hidden>
+    <div style="display:flex;gap:14px;align-items:center">
+      <img id="pav" alt="Profile picture" width="84" height="84" style="border-radius:50%;object-fit:cover;background:var(--line);width:84px;height:84px;flex:none">
+      <div style="min-width:0"><b id="pname">Member</b><div class="quote" id="pemail" style="word-break:break-all"></div><div class="quote" id="psince"></div></div>
+    </div>
+    <label for="pfile" class="btn" style="display:block;text-align:center;cursor:pointer;margin-top:12px">Change profile picture</label><input id="pfile" type="file" accept="image/*" hidden>
+    <button class="btn" id="pdelph" hidden style="background:var(--gd)">Remove picture</button>
+    <label for="pdn">Your name</label><input id="pdn" maxlength="60" autocomplete="name">
+    <label for="pdis">District or town (optional)</label><input id="pdis" maxlength="60">
+    <button class="btn" id="psave">Save profile</button><div class="msg" id="pmsg" role="status"></div>
+    <h3>SMS receipts</h3>
+    <label for="myphone">Your phone number</label><input id="myphone" inputmode="tel" placeholder="07XXXXXXXX"><button class="btn" id="savephone">Save for SMS receipts</button>
+    <label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="psms" checked style="width:auto;min-width:0;flex:none"> Send me SMS receipts</label><div class="msg" id="phonemsg" role="status"></div>
+    <h3>Account and security</h3>
+    <div class="quote" id="pkyc"></div>
+    <label for="npw">New password (at least 8 characters)</label><input id="npw" type="password" autocomplete="new-password">
+    <label for="npw2">Repeat new password</label><input id="npw2" type="password" autocomplete="new-password">
+    <button class="btn" id="pchpw">Change password</button><div class="msg" id="pwmsg" role="status"></div>
+    <button class="btn" id="pallout" style="background:var(--gd)">Sign out of all devices</button>
+    <h3>My limits</h3><div class="quote" id="plimits"></div>
+    <h3>My data</h3>
+    <button class="btn" id="pcsv" style="background:var(--gd)">Download my transactions (CSV)</button>
+    <a class="btn" id="pdel" style="display:block;text-align:center;text-decoration:none;background:var(--err)">Request account deletion</a>
+    <p class="quote">Some financial records must be kept for legal reasons even after an account is deleted.</p>
+    <h3>Help</h3><div class="quote" id="pcontact"></div>
+  </section>
   <section id="t-more" hidden><ul id="more"></ul></section>
 </div>
-<footer style="margin:24px 0;font-size:.9rem;color:var(--mute);text-align:center"><a href="learn.html" style="color:inherit">Learn</a> | <a href="terms.html" style="color:inherit">Terms</a> | <a href="privacy.html" style="color:inherit">Privacy</a> | <a href="shop.html" style="color:inherit">My shop</a> | <a href="savings.html" style="color:inherit">Savings groups</a><span id="helpwrap" hidden> | <a href="#" id="helplink" style="color:inherit">Help on WhatsApp</a></span><span id="instwrap" hidden> | <a href="#" id="installbtn" style="color:inherit">Install app</a></span></footer>
+<footer style="margin:24px 0;font-size:.9rem;color:var(--mute);text-align:center"><a href="learn.html" style="color:inherit">Learn</a> | <a href="terms.html" style="color:inherit">Terms</a> | <a href="privacy.html" style="color:inherit">Privacy</a> | <a href="shop.html" style="color:inherit">My shop</a> | <a href="savings.html" style="color:inherit">Savings groups</a><span id="helpwrap" hidden> | <a href="#" id="helplink" style="color:inherit">Help on WhatsApp</a></span> | <a href="mailto:ymsdi.youth@gmail.com" id="maillink" style="color:inherit">Email us</a><span id="instwrap" hidden> | <a href="#" id="installbtn" style="color:inherit">Install app</a></span></footer>
 </main>
 
 <script>
@@ -171,14 +207,14 @@ async function boot(){
     const li = document.createElement("li"); li.className = "soon";
     li.textContent = x.label; const s = document.createElement("span"); s.textContent = "Phase " + x.phase; li.appendChild(s); more.appendChild(li);
   });
-  await refresh(); quote();
+  await loadRate(); await refresh(); quote();
 }
 
 async function refresh(){
   const { data, error } = await db.rpc("ensure_wallet");
   if (error){ say(error.message, true); return; }
   $("bal").textContent = fmt(data.usdt_balance) + " USDT";
-  $("ugxv").textContent = "Illustrative value: UGX " + fmt(data.usdt_balance * rate); paintBalance();
+  $("ugxv").textContent = "Value: UGX " + fmt(data.usdt_balance * rate) + "  |  1 USDT = UGX " + fmt(rate); paintBalance();
   const { data: rows } = await db.from("wallet_ledger").select("*").order("id", {ascending:false}).limit(30);
   const ul = $("hist"); ul.textContent = "";
   if (!rows || !rows.length){ ul.textContent = "No activity yet. Make your first demo payment."; return; }
@@ -215,15 +251,14 @@ $("go").addEventListener("click", async () => {
 
 document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => {
   document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", x === b));
-  ["pay","hist","shop","dep","out","kyc","more"].forEach(t => show("t-" + t, t === b.dataset.t));
+  ["pay","hist","me","shop","dep","out","kyc","more"].forEach(t => show("t-" + t, t === b.dataset.t));
 }));
 
 
 // ---- Live mode: settings, deposit, cash out, ID check ----
 let S = {};
 async function loadSettings(){
-  const { data } = await db.from("app_settings").select("key,value");
-  S = Object.fromEntries((data || []).map(r => [r.key, r.value]));
+  if (!Object.keys(S).length){ const { data } = await db.from("app_settings").select("key,value"); S = Object.fromEntries((data || []).map(r => [r.key, r.value])); }
   const live = S.payments_mode === "live";
   $("demo").hidden = live && S.maintenance !== "true";
   $("demo").textContent = S.maintenance === "true" ? "Payments are paused for maintenance. Please try again later." : S.payments_mode === "pilot" ? "Private testing. Only approved testers can make payments right now." : "Demo mode. Balances are fictional and no real money moves.";
@@ -287,8 +322,8 @@ function setupWallet(){
   const cs = $("cochain"); cs.textContent = ""; chains.forEach(c => cs.add(new Option(CH[c], c))); $("cowallet").hidden = !(live && on.has("cashout"));
 }
 async function sendEvm(c, o){
-  const eth = window.ethereum; if (!eth) throw new Error("No wallet found. Open this page inside Trust Wallet's browser, or use MetaMask.");
-  const [from] = await eth.request({ method: "eth_requestAccounts" });
+  const eth = (WS.evm && WS.evm.provider) || window.ethereum; if (!eth) throw new Error("Connect your wallet first (tap Connect with QR code, or open this page in your wallet's browser).");
+  const from = (WS.evm && WS.evm.addr) || (await eth.request({ method: "eth_requestAccounts" }))[0];
   try { await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0x" + Number(S["chainid_" + c]).toString(16) }] }); }
   catch (e) { throw new Error("Switch your wallet to " + CH[c] + " and try again."); }
   const raw = rawOf(o.pay_total, Number(S["dec_" + c] || 18));
@@ -396,13 +431,7 @@ $("login").addEventListener("click", async () => {
   finally { btn.disabled = false; }
 });
 ["em", "pw", "pw2"].forEach(id => $(id).addEventListener("keydown", e => { if (e.key === "Enter") $("login").click(); }));
-$("signout").addEventListener("click", async () => { await db.auth.signOut(); location.reload(); });
-const _boot = boot; boot = async function(){
-  if (recovering){ showAuth("newpw"); return; }
-  await _boot();
-  if (!$("app").hidden){ $("signout").hidden = false; isTester = ((await db.rpc("is_tester")).data === true); await loadSettings(); setupWallet(); setupShop(); loadCashouts(); loadKyc(); loadWalletOrders(); loadPhone(); }
-  applyLang();
-};
+$("signout").addEventListener("click", async () => { await db.auth.signOut(); try { Object.keys(localStorage).filter(k => k.startsWith("ymsdi_boot_")).forEach(k => localStorage.removeItem(k)); } catch (e) {} location.reload(); });
 // ---- Pilot testing, wallet connect, wallet cash out, SMS receipts, languages ----
 let isTester = false;
 async function sendFor(c, o){ return c === "tron" ? await sendTron(o) : c === "solana" ? await sendSolana(o) : await sendEvm(c, o); }
@@ -451,12 +480,19 @@ function applyLang(){
 const ls = $("lang"); Object.entries(LANGS).forEach(([k, v]) => ls.add(new Option(v, k))); ls.value = LANG;
 ls.addEventListener("change", () => { LANG = ls.value; try { localStorage.setItem("ymsdi_lang", LANG); } catch (e) {} applyLang(); });
 
-// ---- Wallet panel: connect, show real balance ----
-let WALLET = null;
-const PUB_RPC = { bnb: "https://bsc-dataseed.binance.org", polygon: "https://polygon-rpc.com" };
-async function jrpc(url, method, params){
-  const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
-  const j = await r.json(); if (j.error) throw new Error(j.error.message || "RPC error"); return j.result;
+// ---- Wallet panel: connect once, stay connected, read every chain ----
+const WS = { evm: null, solana: null, tron: null };
+let BAL = {}, WCP = null, WCURI = "";
+const PUB_RPC = { bnb: ["https://bsc-dataseed.binance.org", "https://bsc-rpc.publicnode.com", "https://bsc-dataseed1.defibit.io"], polygon: ["https://polygon-bor-rpc.publicnode.com", "https://polygon-rpc.com", "https://polygon.drpc.org"] };
+const fmtU = n => Number(n).toLocaleString("en-US", { maximumFractionDigits: 4 });
+const short = a => a.slice(0, 6) + "..." + a.slice(-4);
+async function jrpc(urls, method, params){
+  let last;
+  for (const url of [].concat(urls)){
+    try { const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) }); const j = await r.json(); if (j.error) throw new Error(j.error.message || "RPC error"); return j.result; }
+    catch (e){ last = e; }
+  }
+  throw last || new Error("RPC error");
 }
 function evmProvider(kind){
   const w = window; let list = w.ethereum && Array.isArray(w.ethereum.providers) && w.ethereum.providers.length ? w.ethereum.providers.slice() : (w.ethereum ? [w.ethereum] : []);
@@ -473,8 +509,8 @@ async function evmBalances(addr){
   for (const c of ["bnb", "polygon"]){
     if (!S["usdt_" + c]) continue;
     try {
-      const url = S["client_rpc_" + c] || PUB_RPC[c], data = "0x70a08231" + addr.toLowerCase().replace("0x", "").padStart(64, "0");
-      const [u, n] = await Promise.all([jrpc(url, "eth_call", [{ to: S["usdt_" + c], data }, "latest"]), jrpc(url, "eth_getBalance", [addr, "latest"])]);
+      const urls = [S["client_rpc_" + c]].filter(Boolean).concat(PUB_RPC[c]), data = "0x70a08231" + addr.toLowerCase().replace("0x", "").padStart(64, "0");
+      const [u, n] = await Promise.all([jrpc(urls, "eth_call", [{ to: S["usdt_" + c], data }, "latest"]), jrpc(urls, "eth_getBalance", [addr, "latest"])]);
       out[c] = { usdt: Number(BigInt(u)) / Math.pow(10, Number(S["dec_" + c] || 18)), native: Number(BigInt(n)) / 1e18, sym: c === "bnb" ? "BNB" : "POL" };
     } catch (e){ out[c] = { err: e.message || "failed" }; }
   }
@@ -493,52 +529,215 @@ async function tronBalances(addr){
   return { tron: { usdt: Number(raw.toString()) / Math.pow(10, Number(S.dec_tron || 6)), native: Number(trx) / 1e6, sym: "TRX" } };
 }
 async function loadWalletBalance(){
-  if (!WALLET) return;
-  try { WALLET.err = null; WALLET.bal = WALLET.type === "evm" ? await evmBalances(WALLET.addr) : WALLET.type === "solana" ? await solBalances(WALLET.addr) : await tronBalances(WALLET.addr); }
-  catch (e){ WALLET.bal = {}; WALLET.err = e.message || "failed"; }
+  const jobs = [];
+  if (WS.evm) jobs.push(evmBalances(WS.evm.addr).then(r => Object.assign(BAL, r)));
+  if (WS.solana) jobs.push(solBalances(WS.solana.addr).then(r => Object.assign(BAL, r)).catch(e => { BAL.solana = { err: e.message || "failed" }; }));
+  if (WS.tron) jobs.push(tronBalances(WS.tron.addr).then(r => Object.assign(BAL, r)).catch(e => { BAL.tron = { err: e.message || "failed" }; }));
+  await Promise.all(jobs);
+  if (!WS.evm){ delete BAL.bnb; delete BAL.polygon; } if (!WS.solana) delete BAL.solana; if (!WS.tron) delete BAL.tron;
   renderWallet();
 }
 function renderWallet(){
-  const a = WALLET.addr, lines = [`Connected: ${a.slice(0, 6)}...${a.slice(-4)}`];
-  Object.entries(WALLET.bal || {}).forEach(([c, b]) => lines.push(b.err ? `${CH[c]}: could not read the balance (${b.err})` : `${CH[c]}: ${fmt(b.usdt)} USDT | gas ${b.native.toFixed(4)} ${b.sym}`));
-  if (WALLET.err) lines.push("Could not read the balance: " + WALLET.err);
-  $("walletstate").textContent = lines.join("\n"); paintBalance();
+  const any = Object.values(WS).some(Boolean), lines = [], hint = { solana: " (tap Phantom to add it)", tron: " (tap TronLink to add it)" };
+  [["bnb", "evm"], ["polygon", "evm"], ["solana", "solana"], ["tron", "tron"]].forEach(([c, t]) => {
+    const w = WS[t]; if (!w){ lines.push(`${CH[c]}: not connected${hint[c] || ""}`); return; }
+    const b = BAL[c]; lines.push(!b ? `${CH[c]}: reading...` : b.err ? `${CH[c]}: could not read (${b.err})` : `${CH[c]}: ${fmtU(b.usdt)} USDT | gas ${b.native.toFixed(4)} ${b.sym} | ${short(w.addr)}`);
+  });
+  const ks = Object.keys(BAL).filter(k => BAL[k] && !BAL[k].err); if (ks.length) lines.push("Total: " + fmtU(ks.reduce((a, k) => a + BAL[k].usdt, 0)) + " USDT");
+  $("walletstate").textContent = any ? lines.join("\n") : "Not connected. Choose your wallet."; $("wdisc").hidden = !any; paintBalance();
 }
 function paintBalance(){
-  if (!WALLET || !WALLET.bal) return;
-  let k = $("chain").value; if (!WALLET.bal[k] || WALLET.bal[k].err) k = Object.keys(WALLET.bal).find(x => !WALLET.bal[x].err); if (!k) return;
-  const b = WALLET.bal[k]; $("ballabel").textContent = "Wallet balance on " + CH[k]; $("bal").textContent = fmt(b.usdt) + " USDT"; $("ugxv").textContent = "Illustrative value: UGX " + fmt(b.usdt * rate);
+  const ks = Object.keys(BAL).filter(k => BAL[k] && !BAL[k].err); if (!ks.length) return;
+  const total = ks.reduce((a, k) => a + BAL[k].usdt, 0);
+  $("ballabel").textContent = ks.length > 1 ? "Wallet balance (" + ks.map(k => CH[k]).join(" + ") + ")" : "Wallet balance on " + CH[ks[0]];
+  $("bal").textContent = fmtU(total) + " USDT"; $("ugxv").textContent = "Value: UGX " + fmt(total * rate) + "  |  1 USDT = UGX " + fmt(rate);
 }
+function saveWallets(){ try { const o = {}; Object.entries(WS).forEach(([k, v]) => { if (v) o[k] = { addr: v.addr, via: v.via }; }); localStorage.setItem("ymsdi_wallets", JSON.stringify(o)); } catch (e) {} }
 const withTimeout = (p, ms, msg) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error(msg)), ms))]);
+async function loadRate(){ const { data } = await db.rpc("quote", { p_category: "airtime", p_ugx: 1000 }); if (data && data.rate){ rate = Number(data.rate); paintBalance(); } }
+setInterval(loadRate, 300000);
+
+async function wcProvider(){
+  if (WCP) return WCP;
+  const pid = S.walletconnect_project_id; if (!pid) throw new Error("QR connection is not set up yet. The admin must add the WalletConnect project ID in Settings.");
+  if (!window["@walletconnect/ethereum-provider"]) await loadScript("https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.17.0/dist/index.umd.js");
+  const lib = window["@walletconnect/ethereum-provider"], EP = lib && (lib.EthereumProvider || lib.default); if (!EP) throw new Error("The QR connection library did not load. Try again.");
+  const p = await EP.init({ projectId: pid, chains: [56], optionalChains: [137], showQrModal: false, metadata: { name: "YMSDI Pay", description: "Pay bills with crypto", url: location.origin, icons: [location.origin + "/icon-192.png"] } });
+  p.on("display_uri", showWcQr);
+  p.on("disconnect", () => { if (WS.evm && WS.evm.via === "wc"){ WS.evm = null; delete BAL.bnb; delete BAL.polygon; saveWallets(); renderWallet(); } });
+  p.on("accountsChanged", a => { if (WS.evm && WS.evm.via === "wc" && a && a[0]){ WS.evm.addr = a[0]; saveWallets(); loadWalletBalance(); } });
+  WCP = p; return p;
+}
+async function showWcQr(uri){
+  WCURI = uri; if (!window.qrcode) await loadScript("https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js");
+  const q = window.qrcode(0, "M"); q.addData(uri); q.make(); $("wcqrimg").innerHTML = q.createSvgTag({ cellSize: 5, margin: 2, scalable: true });
+  const enc = encodeURIComponent(uri); $("wclink").href = "https://link.trustwallet.com/wc?uri=" + enc; $("wclink2").href = "https://metamask.app.link/wc?uri=" + enc;
+  $("wcbox").hidden = false; $("walletstate").textContent = "Waiting for you to approve in your wallet...";
+}
+async function connectQR(){
+  const st = $("walletstate");
+  try {
+    st.textContent = "Preparing the QR code..."; const p = await wcProvider();
+    if (!(p.session && p.accounts && p.accounts[0])) await withTimeout(p.connect(), 180000, "The connection was not approved in time. Try again.");
+    WS.evm = { addr: p.accounts[0], provider: p, via: "wc" }; $("wcbox").hidden = true; saveWallets(); renderWallet(); await loadWalletBalance();
+  } catch (e){ $("wcbox").hidden = true; st.textContent = (e && e.message) || "Could not connect."; }
+}
 async function connectKind(kind){
   const st = $("walletstate"), here = location.href; st.textContent = "Connecting... approve in your wallet if it asks.";
   try {
     if (kind === "trust" || kind === "metamask"){
       const eth = evmProvider(kind);
       if (!eth){
-        st.textContent = "No wallet found in this browser. Opening the wallet app. Sign in again inside it, then tap the button again.";
+        st.textContent = "No wallet found in this browser. Opening the wallet app. Sign in again inside it, then tap the button again. Tip: the QR code button below keeps you in this browser.";
         location.href = kind === "trust" ? "https://link.trustwallet.com/open_url?coin_id=20000714&url=" + encodeURIComponent(here) : "https://metamask.app.link/dapp/" + location.host + location.pathname + location.search; return;
       }
       const accs = await withTimeout(eth.request({ method: "eth_requestAccounts" }), 60000, "No answer from the wallet. Open your wallet, approve the connection, then tap again.");
-      WALLET = { type: "evm", addr: accs[0] };
-      if (eth.on) eth.on("accountsChanged", a => { if (a && a[0] && WALLET){ WALLET.addr = a[0]; loadWalletBalance(); } });
+      WS.evm = { addr: accs[0], provider: eth, via: "injected" };
+      if (eth.on) eth.on("accountsChanged", a => { if (a && a[0] && WS.evm){ WS.evm.addr = a[0]; saveWallets(); loadWalletBalance(); } });
     } else if (kind === "phantom"){
       const p = (window.phantom && window.phantom.solana) || window.solana;
       if (!p){ st.textContent = "No Phantom found in this browser. Opening Phantom. Sign in again inside it, then tap the button again."; location.href = "https://phantom.app/ul/browse/" + encodeURIComponent(here) + "?ref=" + encodeURIComponent(location.origin); return; }
-      const r = await withTimeout(p.connect(), 60000, "No answer from Phantom. Open it, approve the connection, then tap again."); WALLET = { type: "solana", addr: r.publicKey.toString() };
+      const r = await withTimeout(p.connect(), 60000, "No answer from Phantom. Open it, approve the connection, then tap again."); WS.solana = { addr: r.publicKey.toString(), via: "injected" };
     } else {
       if (!window.tronWeb){ st.textContent = "No Tron wallet found here. Open this page inside the TronLink app browser (Discover, then type this site's address), then tap TronLink again."; return; }
       if (window.tronLink && window.tronLink.request) await withTimeout(window.tronLink.request({ method: "tron_requestAccounts" }), 60000, "No answer from TronLink. Approve the connection, then tap again.");
-      const a = window.tronWeb.defaultAddress && window.tronWeb.defaultAddress.base58; if (!a) throw new Error("Unlock your wallet and try again."); WALLET = { type: "tron", addr: a };
+      const a = window.tronWeb.defaultAddress && window.tronWeb.defaultAddress.base58; if (!a) throw new Error("Unlock your wallet and try again."); WS.tron = { addr: a, via: "injected" };
     }
-    const first = WALLET.type === "evm" ? "bnb" : WALLET.type; [$("chain"), $("cochain")].forEach(sel => { if (sel && [...sel.options].some(o => o.value === first)) sel.value = first; });
-    st.textContent = "Connected. Reading your balance..."; await loadWalletBalance();
+    saveWallets(); renderWallet(); await loadWalletBalance();
   } catch (e){ st.textContent = (e && e.message) || "Could not connect."; }
 }
+async function disconnectWallets(){
+  try { if (WCP && WCP.session) await WCP.disconnect(); } catch (e) {}
+  WS.evm = WS.solana = WS.tron = null; BAL = {}; try { localStorage.removeItem("ymsdi_wallets"); } catch (e) {}
+  $("wcbox").hidden = true; renderWallet(); await loadSettings(); refresh();
+}
+async function restoreWallets(){
+  let saved = {}; try { saved = JSON.parse(localStorage.getItem("ymsdi_wallets") || "{}"); } catch (e) {}
+  if (!saved.evm && !saved.solana && !saved.tron) return;
+  const attempt = async () => {
+    if (saved.evm && !WS.evm){
+      try {
+        if (saved.evm.via === "wc"){ const p = await wcProvider(); if (p.session && p.accounts && p.accounts[0]) WS.evm = { addr: p.accounts[0], provider: p, via: "wc" }; }
+        else { const eth = evmProvider("trust"); if (eth){ const a = await eth.request({ method: "eth_accounts" }); if (a && a[0]) WS.evm = { addr: a[0], provider: eth, via: "injected" }; } }
+      } catch (e) {}
+    }
+    if (saved.solana && !WS.solana){ try { const p = (window.phantom && window.phantom.solana) || window.solana; if (p){ const r = await p.connect({ onlyIfTrusted: true }); WS.solana = { addr: r.publicKey.toString(), via: "injected" }; } } catch (e) {} }
+    if (saved.tron && !WS.tron){ try { const a = window.tronWeb && window.tronWeb.defaultAddress && window.tronWeb.defaultAddress.base58; if (a) WS.tron = { addr: a, via: "injected" }; } catch (e) {} }
+  };
+  await attempt(); if (Object.values(WS).some(Boolean)){ renderWallet(); await loadWalletBalance(); }
+  setTimeout(async () => { await attempt(); if (Object.values(WS).some(Boolean)){ renderWallet(); await loadWalletBalance(); } }, 2500);
+}
 document.querySelectorAll("#walletbar [data-w]").forEach(b => b.addEventListener("click", () => connectKind(b.dataset.w)));
-$("chain").addEventListener("change", paintBalance);
-setInterval(() => { if (WALLET) loadWalletBalance(); }, 30000);
+$("wcqr").addEventListener("click", connectQR); $("wdisc").addEventListener("click", disconnectWallets);
+$("wccopy").addEventListener("click", async () => { try { await navigator.clipboard.writeText(WCURI); $("wccopy").textContent = "Copied"; } catch (e) { $("wccopy").textContent = "Copy failed"; } });
+setInterval(() => { if (!document.hidden && Object.values(WS).some(Boolean)) loadWalletBalance(); }, 30000);
 
+// ---- Fast start, profile and settings ----
+let ME = { balance: 0, profile: {} };
+const BOOTKEY = uid => "ymsdi_boot_" + uid;
+const AVATAR_FALLBACK = "data:image/svg+xml;utf8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" fill="#9bb0a2"/><circle cx="48" cy="38" r="18" fill="#fff"/><path d="M12 96c4-24 20-34 36-34s32 10 36 34z" fill="#fff"/></svg>');
+$("hav").src = AVATAR_FALLBACK; $("pav").src = AVATAR_FALLBACK;
+let shopHandled = false;
+function fillCatalog(){
+  const on = new Set(flags.filter(x => x.enabled).map(x => x.key)), sel = $("cat"), keep = sel.value; sel.textContent = "";
+  billers.filter(x => on.has(x.flag_key)).forEach(x => sel.add(new Option(x.name, x.id))); if (keep) sel.value = keep;
+  const more = $("more"); more.textContent = "";
+  flags.filter(x => !x.enabled && !x.key.startsWith("chain_") && x.key !== "wallet_pay").forEach(x => { const li = document.createElement("li"); li.className = "soon"; li.textContent = x.label; const s = document.createElement("span"); s.textContent = "Phase " + x.phase; li.appendChild(s); more.appendChild(li); });
+}
+function paintApp(){ $("bal").textContent = fmt(ME.balance || 0) + " USDT"; $("ugxv").textContent = "Value: UGX " + fmt((ME.balance || 0) * rate) + "  |  1 USDT = UGX " + fmt(rate); paintBalance(); }
+function renderKyc(k){
+  const t = { approved: "Your ID is verified.", pending: "Your ID is under review.", rejected: "Your ID was rejected" + (k && k.note ? ": " + k.note : "") + ". Please submit again." };
+  const txt = k ? t[k.status] : "Verify your ID to deposit, pay and cash out with real money."; $("kycstate").textContent = txt; $("pkyc").textContent = "ID check: " + txt;
+}
+function avatarUrl(path){ return path ? db.storage.from("avatars").getPublicUrl(path).data.publicUrl : ""; }
+function renderProfile(){
+  const p = ME.profile || {}, url = avatarUrl(p.avatar_path) || AVATAR_FALLBACK;
+  ["pav", "hav"].forEach(id => { const i = $(id); if (i && i.getAttribute("src") !== url) i.src = url; });
+  $("pname").textContent = p.display_name || (ME.email || "Member").split("@")[0]; $("pemail").textContent = ME.email || ""; $("psince").textContent = ME.since ? "Member since " + new Date(ME.since).toLocaleDateString() : "";
+  if (document.activeElement !== $("pdn")) $("pdn").value = p.display_name || ""; if (document.activeElement !== $("pdis")) $("pdis").value = p.district || "";
+  $("pdelph").hidden = !p.avatar_path;
+  $("plimits").textContent = `Per payment up to UGX ${fmt(S.max_ugx_per_tx || 0)}. Per day up to UGX ${fmt(S.daily_limit_ugx || 0)}. New accounts have lower limits for their first days.`;
+  const mail = S.support_email || "ymsdi.youth@gmail.com", wa = (S.support_whatsapp || "").replace(/\D/g, ""), box = $("pcontact"); box.textContent = "";
+  if (wa){ const a = document.createElement("a"); a.href = "https://wa.me/" + wa; a.target = "_blank"; a.rel = "noopener"; a.textContent = "WhatsApp us"; box.append(a, " | "); }
+  const m = document.createElement("a"); m.href = "mailto:" + mail; m.textContent = mail; box.appendChild(m);
+  $("pdel").href = "mailto:" + mail + "?subject=" + encodeURIComponent("Delete my YMSDI Pay account") + "&body=" + encodeURIComponent("Please delete my account: " + (ME.email || ""));
+}
+async function applyBootstrap(d, fromCache){
+  S = d.settings || {}; flags = d.flags || []; billers = d.billers || []; rate = Number(d.rate) || rate; isTester = !!d.is_tester;
+  ME.balance = Number((d.wallet && d.wallet.usdt_balance) || 0); ME.profile = d.profile || {};
+  fillCatalog(); await loadSettings(); paintApp();
+  if (!fromCache){ renderKyc(d.kyc); if (d.contact){ $("myphone").value = d.contact.phone || ""; $("psms").checked = d.contact.sms_ok !== false; } }
+  renderProfile(); setupWallet();
+  if (!shopHandled){ shopHandled = true; setupShop(); }
+  const mm = $("maillink"); if (mm && S.support_email) mm.href = "mailto:" + S.support_email;
+}
+const lazyDone = {};
+function lazyTab(t){
+  if (t === "hist" && !lazyDone.hist){ lazyDone.hist = 1; refresh(); loadWalletOrders(); }
+  if (t === "out" && !lazyDone.out){ lazyDone.out = 1; loadCashouts(); }
+}
+document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => lazyTab(b.dataset.t)));
+$("avbtn").addEventListener("click", () => $("metab").click());
+const _boot = boot;
+boot = async function(){
+  if (recovering){ showAuth("newpw"); return; }
+  const { data: { session } } = await db.auth.getSession();
+  if (!session){ showAuth(amode === "signup" || amode === "reset" ? amode : "signin"); return; }
+  show("auth", false); show("app", true); $("signout").hidden = false; $("avbtn").hidden = false; ME.uid = session.user.id; ME.email = session.user.email; ME.since = session.user.created_at;
+  try { const c = JSON.parse(localStorage.getItem(BOOTKEY(ME.uid)) || "null"); if (c && c.d) await applyBootstrap(c.d, true); } catch (e) {}
+  const { data, error } = await db.rpc("app_bootstrap");
+  if (error){   // database update not applied yet: fall back to the slower start
+    await _boot(); isTester = ((await db.rpc("is_tester")).data === true); await loadSettings(); setupWallet(); setupShop(); loadCashouts(); loadKyc(); loadWalletOrders(); loadPhone();
+  } else {
+    try { localStorage.setItem(BOOTKEY(ME.uid), JSON.stringify({ d: { settings: data.settings, flags: data.flags, billers: data.billers, rate: data.rate, is_tester: data.is_tester, wallet: data.wallet, profile: data.profile } })); } catch (e) {}
+    await applyBootstrap(data, false);
+  }
+  restoreWallets(); applyLang();
+};
+
+function pm(t, good){ $("pmsg").textContent = t; $("pmsg").className = "msg" + (good ? "" : " err"); }
+async function resizeToJpeg(file, size){
+  const bmp = await createImageBitmap(file), s = Math.min(bmp.width, bmp.height), c = document.createElement("canvas"); c.width = c.height = size;
+  c.getContext("2d").drawImage(bmp, (bmp.width - s) / 2, (bmp.height - s) / 2, s, s, 0, 0, size, size);
+  return await new Promise(r => c.toBlob(r, "image/jpeg", 0.85));
+}
+$("pfile").addEventListener("change", async () => {
+  const f = $("pfile").files[0]; if (!f) return; pm("Uploading your picture...", true);
+  try {
+    if (!f.type.startsWith("image/")) throw new Error("Choose an image file.");
+    const blob = await resizeToJpeg(f, 256), path = ME.uid + "/avatar-" + Date.now() + ".jpg", old = ME.profile && ME.profile.avatar_path;
+    const up = await db.storage.from("avatars").upload(path, blob, { contentType: "image/jpeg" }); if (up.error) throw up.error;
+    const { error } = await db.rpc("save_profile", { p_name: null, p_district: null, p_lang: null, p_avatar: path, p_clear_avatar: false }); if (error) throw error;
+    if (old) db.storage.from("avatars").remove([old]);
+    ME.profile = Object.assign({}, ME.profile, { avatar_path: path }); renderProfile(); pm("Picture saved.", true);
+  } catch (e){ pm((e && e.message) || "Could not upload the picture.", false); }
+  $("pfile").value = "";
+});
+$("pdelph").addEventListener("click", async () => {
+  const old = ME.profile && ME.profile.avatar_path; const { error } = await db.rpc("save_profile", { p_name: null, p_district: null, p_lang: null, p_avatar: null, p_clear_avatar: true });
+  if (error){ pm(error.message, false); return; } if (old) db.storage.from("avatars").remove([old]); ME.profile = Object.assign({}, ME.profile, { avatar_path: null }); renderProfile(); pm("Picture removed.", true);
+});
+$("psave").addEventListener("click", async () => {
+  const { error } = await db.rpc("save_profile", { p_name: $("pdn").value, p_district: $("pdis").value, p_lang: LANG, p_avatar: null, p_clear_avatar: false });
+  if (error){ pm(error.message, false); return; } ME.profile = Object.assign({}, ME.profile, { display_name: $("pdn").value.trim() || null, district: $("pdis").value.trim() || null }); renderProfile(); pm("Profile saved.", true);
+});
+$("psms").addEventListener("change", async () => { const { error } = await db.rpc("set_sms_ok", { p_ok: $("psms").checked }); $("phonemsg").className = "msg" + (error ? " err" : ""); $("phonemsg").textContent = error ? error.message : ($("psms").checked ? "SMS receipts are on." : "SMS receipts are off."); });
+$("pchpw").addEventListener("click", async () => {
+  const a = $("npw").value, b = $("npw2").value, m = $("pwmsg"); m.className = "msg err";
+  if (a.length < 8){ m.textContent = "Use at least 8 characters."; return; } if (a !== b){ m.textContent = "The two passwords do not match."; return; }
+  const { error } = await db.auth.updateUser({ password: a }); if (error){ m.textContent = error.message; return; }
+  m.className = "msg"; m.textContent = "Password changed."; $("npw").value = ""; $("npw2").value = "";
+});
+$("pallout").addEventListener("click", async () => { await db.auth.signOut({ scope: "global" }); try { localStorage.removeItem(BOOTKEY(ME.uid)); } catch (e) {} location.reload(); });
+$("pcsv").addEventListener("click", async () => {
+  const [o, l] = await Promise.all([db.from("orders").select("id,created_at,category,account_ref,ugx_amount,fee_ugx,usdt_amount,status,mode,pay_method,chain").order("id", { ascending: false }).limit(2000),
+    db.from("wallet_ledger").select("created_at,kind,amount_usdt,ref,note").order("id", { ascending: false }).limit(2000)]);
+  const rows = [["date", "type", "reference", "details", "amount_ugx", "amount_usdt", "status"]]
+    .concat((o.data || []).map(x => [x.created_at, "payment", "ORD-" + x.id, x.category + " " + x.account_ref + (x.chain ? " (" + x.chain + ")" : ""), x.ugx_amount, x.usdt_amount, x.status + (x.mode === "demo" ? " (demo)" : "")]))
+    .concat((l.data || []).map(x => [x.created_at, x.kind, x.ref || "", x.note || "", "", x.amount_usdt, ""]));
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([rows.map(r => r.map(c => JSON.stringify(String(c == null ? "" : c))).join(",")).join("\n")], { type: "text/csv" })); a.download = "my-ymsdi-pay-transactions.csv"; a.click();
+});
+Object.assign(TR, Object.fromEntries([["Profile","Wasifu","Ebikukwatako","Umwirondoro"],["Change profile picture","Badilisha picha ya wasifu","Kyusa ekifaananyi","Hindura ifoto"],["Your name","Jina lako","Erinnya lyo","Izina ryawe"],["Save profile","Hifadhi wasifu","Tereka ebikukwatako","Bika umwirondoro"],["Change password","Badilisha nenosiri","Kyusa ekigambo ekikuuma","Hindura ijambobanga"],["Account and security","Akaunti na usalama","Akawunti n'obukuumi","Konti n'umutekano"],["My limits","Mipaka yangu","Ebyange ebiteekeddwawo","Imipaka yanjye"],["My data","Data yangu","Data yange","Amakuru yanjye"],["Help","Msaada","Obuyambi","Ubufasha"],["Email us","Tutumie barua pepe","Tuweereze email","Twandikire imeri"]].map(r => [r[0], { sw: r[1], lg: r[2], rw: r[3] }])));
 // ---- Pay a shop (QR code or shop code) ----
 let curShop = null;
 function ssay(t, err){ $("shopmsg").textContent = t; $("shopmsg").className = "msg" + (err ? " err" : ""); }

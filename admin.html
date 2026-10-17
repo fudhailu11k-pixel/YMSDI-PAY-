@@ -44,7 +44,7 @@ async function run(p, ok){ const { error } = await p; if (error){ toast(error.me
 function btn(text, fn, cls){ const b = el("button", text, "b " + (cls || "")); b.onclick = fn; return b; }
 function row(title, help){ const r = el("div", null, "row"); r.appendChild(el("b", title)); if (help) r.appendChild(el("small", help)); return r; }
 function view(){ const v = $("view"); v.textContent = ""; return v; }
-async function fn(name, method){ const { data: { session } } = await db.auth.getSession(); const res = await fetch(SUPABASE_URL + "/functions/v1/" + name, { method: method || "POST", headers: { Authorization: "Bearer " + session.access_token } }); const j = await res.json().catch(() => ({})); if (!res.ok) throw new Error(j.error || "Request failed"); return j; }
+async function fn(name, method){ const { data: { session } } = await db.auth.getSession(); const res = await fetch(SUPABASE_URL + "/functions/v1/" + name, { method: method || "POST", headers: { Authorization: "Bearer " + session.access_token } }); const j = await res.json().catch(() => ({})); if (!res.ok) throw new Error(j.error || j.message || ("Request failed (" + res.status + ")")); return j; }
 
 async function features(){
   const v = view();
@@ -194,7 +194,7 @@ async function settings(){
   const v = view(); const { data } = await db.from("app_settings").select("*").order("key");
   const groups = [["Mode and safety", k => ["payments_mode","live_signoff","maintenance","kyc_required"].includes(k)], ["Limits and protection", k => /max_|_limit|min_cashout|new_user|tx_per/.test(k)],
     ["Support and company", k => /^(support_|company|partner_name)/.test(k)], ["Wallet receiving addresses", k => k.startsWith("addr_")],
-    ["Wallet tokens and networks", k => /^(usdt_|dec_|chainid_|client_rpc|deposit_network)/.test(k)], ["Server connections", k => /^(rpc_|confirm_|wallet_order)/.test(k)], ["Exchange rate", k => k.startsWith("rate_")], ["Other", () => true]];
+    ["Wallet tokens and networks", k => /^(usdt_|dec_|chainid_|client_rpc|deposit_network|walletconnect)/.test(k)], ["Server connections", k => /^(rpc_|confirm_|wallet_order)/.test(k)], ["Exchange rate", k => k.startsWith("rate_")], ["Other", () => true]];
   const used = new Set();
   groups.forEach(([title, test]) => {
     const items = (data || []).filter(s => !used.has(s.key) && test(s.key)); if (!items.length) return; items.forEach(s => used.add(s.key));
@@ -270,8 +270,8 @@ async function loadHome(){
   const st = $("stats"); st.textContent = "";
   [["Paid out today", (rv || []).length + " transactions"], ["Volume today", "UGX " + fmt((rv || []).reduce((a, r) => a + Number(r.ugx_amount), 0))], ["Net profit today", "UGX " + fmt((rv || []).reduce((a, r) => a + Number(r.net_ugx), 0))]]
     .forEach(([a, b2]) => { const d = el("div", null, "stat"); d.append(el("small", a), el("b", b2)); st.appendChild(d); });
-  const counts = { fulfil: await cnt("orders", "status", ["queued"]), cashouts: await cnt("cashouts", "status", ["pending_review"]), kyc: await cnt("kyc", "status", ["pending"]), shops: await cnt("merchants", "status", ["pending"]),
-    wallet: await cnt("orders", "status", ["needs_review", "refund_due"]), notifs: await cnt("notifications", "status", ["pending"]) };
+  const cs = await Promise.all([cnt("orders", "status", ["queued"]), cnt("cashouts", "status", ["pending_review"]), cnt("kyc", "status", ["pending"]), cnt("merchants", "status", ["pending"]), cnt("orders", "status", ["needs_review", "refund_due"]), cnt("notifications", "status", ["pending"])]);
+  const counts = { fulfil: cs[0], cashouts: cs[1], kyc: cs[2], shops: cs[3], wallet: cs[4], notifs: cs[5] };
   const t = $("tiles"); t.textContent = "";
   Object.entries(SECTIONS).forEach(([k, [label, ic]]) => { const b3 = el("button", null, "tile"); b3.append(el("span", ic, "ic"), el("span", label)); if (counts[k]) b3.appendChild(el("span", String(counts[k]), "n")); b3.onclick = () => go(k); t.appendChild(b3); });
 }
