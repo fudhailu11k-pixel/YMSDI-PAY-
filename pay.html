@@ -33,10 +33,36 @@ ul{list-style:none;margin:0;padding:0}
 li{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
 li:last-child{border:0}li span{color:var(--mute);font-size:.85rem;display:block}
 .soon{opacity:.6}
+
+/* compact modern look */
+header{position:sticky;top:0;z-index:20;padding:10px 14px!important;gap:8px}
+header a{font-size:1.05rem}
+#avbtn{width:34px!important;height:34px!important;margin-left:auto!important;margin-right:6px!important}
+#avbtn img{width:30px!important;height:30px!important}
+#lang{padding:4px 6px!important;font-size:.8rem;border-radius:8px!important;max-width:84px;margin:0 6px 0 0!important}
+#signout{width:34px;height:34px;border-radius:50%;padding:0;flex:none;cursor:pointer;background:transparent;border:1px solid #fff;color:#fff;align-items:center;justify-content:center}
+#signout:not([hidden]){display:flex}
+main{padding:12px 14px 110px!important}
+.demo{padding:8px 12px!important;font-size:.82rem;margin-bottom:10px!important;border-radius:12px!important}
+.bal{padding:16px 18px!important;border-radius:20px!important;background:linear-gradient(135deg,#0b7a43,#065f33)!important}
+.bal b{font-size:2rem!important}
+nav{flex-wrap:nowrap!important;overflow-x:auto;gap:6px!important;margin:12px 0!important;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+nav::-webkit-scrollbar{display:none}
+nav button{flex:none!important;padding:8px 14px!important;border-radius:99px!important;font-size:.88rem;white-space:nowrap}
+section{border-radius:16px!important;padding:14px!important}
+.btn{border-radius:12px!important;padding:12px!important}
+#walletbar .btn{padding:9px!important;font-size:.88rem}
+details#walletbar summary{list-style:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:8px}
+details#walletbar summary::-webkit-details-marker{display:none}
+details#walletbar summary::after{content:"\25BE";color:var(--mute);font-size:1rem}
+details#walletbar[open] summary::after{content:"\25B4"}
+.chip{font-size:.75rem;padding:2px 9px;border-radius:99px;background:var(--line);color:var(--mute);font-weight:400}
+.chip.ok{background:#d8f0e0;color:#065f33}
+@media (prefers-color-scheme:dark){.chip.ok{background:#1d4a30;color:#bfe8cd}}
 </style>
 </head>
 <body>
-<header style="display:flex;justify-content:space-between;align-items:center"><a href="pay.html">YMSDI Pay</a><button id="avbtn" hidden aria-label="My profile" style="margin-left:auto;margin-right:8px;background:transparent;border:2px solid #fff;border-radius:50%;padding:0;width:38px;height:38px;cursor:pointer;flex:none;overflow:hidden"><img id="hav" alt="" width="34" height="34" decoding="async" style="border-radius:50%;object-fit:cover;display:block;width:34px;height:34px"></button><select id="lang" aria-label="Language" style="margin-left:auto;margin-right:8px;width:auto;min-width:0;flex:none;padding:6px 8px;background:#0a2418;color:#fff;border:1px solid #fff"></select><button id="signout" hidden style="background:transparent;border:1px solid #fff;color:#fff;border-radius:8px;padding:6px 12px;font:inherit;cursor:pointer">Sign out</button></header>
+<header style="display:flex;justify-content:space-between;align-items:center"><a href="pay.html">YMSDI Pay</a><button id="avbtn" hidden aria-label="My profile" style="margin-left:auto;margin-right:8px;background:transparent;border:2px solid #fff;border-radius:50%;padding:0;width:38px;height:38px;cursor:pointer;flex:none;overflow:hidden"><img id="hav" alt="" width="34" height="34" decoding="async" style="border-radius:50%;object-fit:cover;display:block;width:34px;height:34px"></button><select id="lang" aria-label="Language" style="margin-left:auto;margin-right:8px;width:auto;min-width:0;flex:none;padding:6px 8px;background:#0a2418;color:#fff;border:1px solid #fff"></select><button id="signout" hidden aria-label="Sign out" title="Sign out"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 3v9"/><path d="M6.4 6.6a8 8 0 1 0 11.2 0"/></svg></button></header>
 <main>
 <div class="demo" id="demo">Demo mode. Balances are fictional and no real money moves.</div>
 
@@ -53,9 +79,9 @@ li:last-child{border:0}li span{color:var(--mute);font-size:.85rem;display:block}
 
 <div id="app" hidden>
   <div class="bal"><small id="ballabel">Balance</small><b id="bal">0.00 USDT</b><small id="ugxv"></small></div>
-  <section id="walletbar" style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:12px">
-    <b>Crypto wallet</b>
-    <div class="quote" id="walletstate" style="white-space:pre-wrap;word-break:break-all">Not connected. Choose your wallet.</div>
+  <details id="walletbar" style="background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 14px;margin-top:10px">
+    <summary><span style="display:flex;align-items:center;gap:8px"><b>Crypto wallet</b><span id="wsum" class="chip">Not connected</span></span></summary>
+    <div class="quote" id="walletstate" style="white-space:pre-wrap;word-break:break-all;margin-top:8px">Not connected. Choose your wallet.</div>
     <button class="btn" id="wcqr" style="margin:8px 0 0">Connect with QR code (Trust, MetaMask and others)</button>
     <div id="wcbox" hidden style="margin-top:10px;text-align:center">
       <div id="wcqrimg" style="background:#fff;padding:10px;border-radius:12px;max-width:260px;margin:auto"></div>
@@ -70,7 +96,7 @@ li:last-child{border:0}li span{color:var(--mute);font-size:.85rem;display:block}
     <button class="btn" id="wdisc" hidden style="background:var(--err)">Disconnect wallet</button>
     <div class="quote" id="walletdiag" style="font-size:.8rem"></div>
     <div class="quote" id="walletnote"></div>
-  </section>
+  </details>
   <nav role="tablist">
     <button role="tab" aria-selected="true" data-t="pay">Pay</button>
     <button role="tab" aria-selected="false" data-t="hist">History</button>
@@ -159,6 +185,7 @@ li:last-child{border:0}li span{color:var(--mute);font-size:.85rem;display:block}
     <label for="npw">New password (at least 8 characters)</label><input id="npw" type="password" autocomplete="new-password">
     <label for="npw2">Repeat new password</label><input id="npw2" type="password" autocomplete="new-password">
     <button class="btn" id="pchpw">Change password</button><div class="msg" id="pwmsg" role="status"></div>
+    <button class="btn" id="signout2" style="background:var(--gd)">Sign out</button>
     <button class="btn" id="pallout" style="background:var(--gd)">Sign out of all devices</button>
     <h3>My limits</h3><div class="quote" id="plimits"></div>
     <h3>My data</h3>
@@ -213,8 +240,7 @@ async function boot(){
 async function refresh(){
   const { data, error } = await db.rpc("ensure_wallet");
   if (error){ say(error.message, true); return; }
-  $("bal").textContent = fmt(data.usdt_balance) + " USDT";
-  $("ugxv").textContent = "Value: UGX " + fmt(data.usdt_balance * rate) + "  |  1 USDT = UGX " + fmt(rate); paintBalance();
+  ME.balance = Number(data.usdt_balance); paintApp();
   const { data: rows } = await db.from("wallet_ledger").select("*").order("id", {ascending:false}).limit(30);
   const ul = $("hist"); ul.textContent = "";
   if (!rows || !rows.length){ ul.textContent = "No activity yet. Make your first demo payment."; return; }
@@ -477,7 +503,7 @@ function applyLang(){
   }
   obs.observe(document.body, { childList: true, subtree: true, characterData: true }); applying = false;
 }
-const ls = $("lang"); Object.entries(LANGS).forEach(([k, v]) => ls.add(new Option(v, k))); ls.value = LANG;
+const ls = $("lang"); ls.title = "Language"; Object.entries(LANGS).forEach(([k, v]) => ls.add(new Option("\uD83C\uDF10 " + k.toUpperCase(), k))); ls.value = LANG;
 ls.addEventListener("change", () => { LANG = ls.value; try { localStorage.setItem("ymsdi_lang", LANG); } catch (e) {} applyLang(); });
 
 // ---- Wallet panel: connect once, stay connected, read every chain ----
@@ -544,7 +570,7 @@ function renderWallet(){
     const b = BAL[c]; lines.push(!b ? `${CH[c]}: reading...` : b.err ? `${CH[c]}: could not read (${b.err})` : `${CH[c]}: ${fmtU(b.usdt)} USDT | gas ${b.native.toFixed(4)} ${b.sym} | ${short(w.addr)}`);
   });
   const ks = Object.keys(BAL).filter(k => BAL[k] && !BAL[k].err); if (ks.length) lines.push("Total: " + fmtU(ks.reduce((a, k) => a + BAL[k].usdt, 0)) + " USDT");
-  $("walletstate").textContent = any ? lines.join("\n") : "Not connected. Choose your wallet."; $("wdisc").hidden = !any; paintBalance();
+  $("walletstate").textContent = any ? lines.join("\n") : "Not connected. Choose your wallet."; $("wdisc").hidden = !any; $("wsum").textContent = any ? "Connected \u00B7 " + fmtU(ks.reduce((a, k) => a + BAL[k].usdt, 0)) + " USDT" : "Not connected"; $("wsum").className = "chip" + (any ? " ok" : ""); paintBalance();
 }
 function paintBalance(){
   const ks = Object.keys(BAL).filter(k => BAL[k] && !BAL[k].err); if (!ks.length) return;
@@ -557,11 +583,26 @@ const withTimeout = (p, ms, msg) => Promise.race([p, new Promise((_, no) => setT
 async function loadRate(){ const { data } = await db.rpc("quote", { p_category: "airtime", p_ugx: 1000 }); if (data && data.rate){ rate = Number(data.rate); paintBalance(); } }
 setInterval(loadRate, 300000);
 
+const WC_VER = "2.17.0";
+function findEP(){
+  const g = window, c = [g["@walletconnect/ethereum-provider"], g.WalletConnectEthereumProvider, g.EthereumProvider, g.WalletConnect && g.WalletConnect.EthereumProvider];
+  for (const x of c){ if (!x) continue; if (x.EthereumProvider && typeof x.EthereumProvider.init === "function") return x.EthereumProvider; if (x.default && x.default.EthereumProvider) return x.default.EthereumProvider; if (typeof x.init === "function") return x; }
+  return null;
+}
+async function loadWcLib(){
+  const notes = []; let EP = findEP(); if (EP) return EP;
+  try {
+    const m = await withTimeout(import("https://esm.sh/@walletconnect/ethereum-provider@" + WC_VER + "?bundle"), 60000, "timed out");
+    EP = m.EthereumProvider || (m.default && (m.default.EthereumProvider || m.default)); if (EP && typeof EP.init === "function") return EP; notes.push("module loaded without EthereumProvider");
+  } catch (e){ notes.push("module: " + ((e && e.message) || e)); }
+  try { await loadScript("https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@" + WC_VER + "/dist/index.umd.js"); EP = findEP(); if (EP) return EP; notes.push("script loaded but no known name"); }
+  catch (e){ notes.push("script: " + ((e && e.message) || e)); }
+  throw new Error("Could not load the QR connection code (" + notes.join("; ") + "). Check your internet and try again.");
+}
 async function wcProvider(){
   if (WCP) return WCP;
   const pid = S.walletconnect_project_id; if (!pid) throw new Error("QR connection is not set up yet. The admin must add the WalletConnect project ID in Settings.");
-  if (!window["@walletconnect/ethereum-provider"]) await loadScript("https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.17.0/dist/index.umd.js");
-  const lib = window["@walletconnect/ethereum-provider"], EP = lib && (lib.EthereumProvider || lib.default); if (!EP) throw new Error("The QR connection library did not load. Try again.");
+  const EP = await loadWcLib();
   const p = await EP.init({ projectId: pid, chains: [56], optionalChains: [137], showQrModal: false, metadata: { name: "YMSDI Pay", description: "Pay bills with crypto", url: location.origin, icons: [location.origin + "/icon-192.png"] } });
   p.on("display_uri", showWcQr);
   p.on("disconnect", () => { if (WS.evm && WS.evm.via === "wc"){ WS.evm = null; delete BAL.bnb; delete BAL.polygon; saveWallets(); renderWallet(); } });
@@ -572,14 +613,14 @@ async function showWcQr(uri){
   WCURI = uri; if (!window.qrcode) await loadScript("https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js");
   const q = window.qrcode(0, "M"); q.addData(uri); q.make(); $("wcqrimg").innerHTML = q.createSvgTag({ cellSize: 5, margin: 2, scalable: true });
   const enc = encodeURIComponent(uri); $("wclink").href = "https://link.trustwallet.com/wc?uri=" + enc; $("wclink2").href = "https://metamask.app.link/wc?uri=" + enc;
-  $("wcbox").hidden = false; $("walletstate").textContent = "Waiting for you to approve in your wallet...";
+  $("walletbar").open = true; $("wcbox").hidden = false; $("walletstate").textContent = "Waiting for you to approve in your wallet...";
 }
 async function connectQR(){
   const st = $("walletstate");
   try {
-    st.textContent = "Preparing the QR code..."; const p = await wcProvider();
+    st.textContent = "Loading the QR connection code. The first time can take about 20 seconds on slow data..."; const p = await wcProvider();
     if (!(p.session && p.accounts && p.accounts[0])) await withTimeout(p.connect(), 180000, "The connection was not approved in time. Try again.");
-    WS.evm = { addr: p.accounts[0], provider: p, via: "wc" }; $("wcbox").hidden = true; saveWallets(); renderWallet(); await loadWalletBalance();
+    WS.evm = { addr: p.accounts[0], provider: p, via: "wc" }; $("wcbox").hidden = true; saveWallets(); renderWallet(); $("walletbar").open = false; await loadWalletBalance();
   } catch (e){ $("wcbox").hidden = true; st.textContent = (e && e.message) || "Could not connect."; }
 }
 async function connectKind(kind){
@@ -603,7 +644,7 @@ async function connectKind(kind){
       if (window.tronLink && window.tronLink.request) await withTimeout(window.tronLink.request({ method: "tron_requestAccounts" }), 60000, "No answer from TronLink. Approve the connection, then tap again.");
       const a = window.tronWeb.defaultAddress && window.tronWeb.defaultAddress.base58; if (!a) throw new Error("Unlock your wallet and try again."); WS.tron = { addr: a, via: "injected" };
     }
-    saveWallets(); renderWallet(); await loadWalletBalance();
+    saveWallets(); renderWallet(); $("walletbar").open = false; await loadWalletBalance();
   } catch (e){ st.textContent = (e && e.message) || "Could not connect."; }
 }
 async function disconnectWallets(){
@@ -644,7 +685,11 @@ function fillCatalog(){
   const more = $("more"); more.textContent = "";
   flags.filter(x => !x.enabled && !x.key.startsWith("chain_") && x.key !== "wallet_pay").forEach(x => { const li = document.createElement("li"); li.className = "soon"; li.textContent = x.label; const s = document.createElement("span"); s.textContent = "Phase " + x.phase; li.appendChild(s); more.appendChild(li); });
 }
-function paintApp(){ $("bal").textContent = fmt(ME.balance || 0) + " USDT"; $("ugxv").textContent = "Value: UGX " + fmt((ME.balance || 0) * rate) + "  |  1 USDT = UGX " + fmt(rate); paintBalance(); }
+function paintApp(){
+  const walletOn = Object.keys(BAL).some(k => BAL[k] && !BAL[k].err);
+  if (S.payments_mode === "pilot" && !walletOn){ $("ballabel").textContent = "Wallet balance"; $("bal").textContent = "\u2014 USDT"; $("ugxv").textContent = "Connect a wallet to see it  |  1 USDT = UGX " + fmt(rate); return; }
+  $("bal").textContent = fmt(ME.balance || 0) + " USDT"; $("ugxv").textContent = "Value: UGX " + fmt((ME.balance || 0) * rate) + "  |  1 USDT = UGX " + fmt(rate); paintBalance();
+}
 function renderKyc(k){
   const t = { approved: "Your ID is verified.", pending: "Your ID is under review.", rejected: "Your ID was rejected" + (k && k.note ? ": " + k.note : "") + ". Please submit again." };
   const txt = k ? t[k.status] : "Verify your ID to deposit, pay and cash out with real money."; $("kycstate").textContent = txt; $("pkyc").textContent = "ID check: " + txt;
@@ -677,7 +722,7 @@ function lazyTab(t){
   if (t === "out" && !lazyDone.out){ lazyDone.out = 1; loadCashouts(); }
 }
 document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => lazyTab(b.dataset.t)));
-$("avbtn").addEventListener("click", () => $("metab").click());
+$("avbtn").addEventListener("click", () => $("metab").click()); $("signout2").addEventListener("click", () => $("signout").click());
 const _boot = boot;
 boot = async function(){
   if (recovering){ showAuth("newpw"); return; }
